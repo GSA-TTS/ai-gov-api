@@ -61,7 +61,6 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
     output_tokens_total = 0
 
     async for vertex_response in vertex_stream:
-        print(vertex_response)
         if vertex_response.usage_metadata:
             input_tokens_total += getattr(vertex_response.usage_metadata, "prompt_token_count", 0)
             output_tokens_total += getattr(vertex_response.usage_metadata, "candidates_token_count", 0)
