@@ -34,7 +34,9 @@ class StructlogMiddleware(BaseHTTPMiddleware):
             raise 
         else:
             duration_ms = round((time.time() - start_time) * 1000, 2)
-            
+            request_logger = request_logger.bind(
+                key_id=getattr(request.state, "api_key_id", None)
+            )
             request_logger.info(
                 "Request completed",
                 status_code=response.status_code,
