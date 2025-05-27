@@ -57,8 +57,15 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
     stream_id = f"chatcmpl-{uuid4()}"
 
     created_timestamp = datetime.now()
+    input_tokens_total = 0
+    output_tokens_total = 0
 
     async for vertex_response in vertex_stream:
+        print(vertex_response)
+        if vertex_response.usage_metadata:
+            input_tokens_total += getattr(vertex_response.usage_metadata, "prompt_token_count", 0)
+            output_tokens_total += getattr(vertex_response.usage_metadata, "candidates_token_count", 0)
+
         if not vertex_response.candidates:
             continue
         for candidate_idx, candidate in enumerate(vertex_response.candidates):
@@ -115,3 +122,15 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
                     model=model_id,
                     choices=[choice],
                 )
+    if input_tokens_total or output_tokens_total:
+        yield StreamResponse(
+            id=stream_id,
+            created=created_timestamp,
+            model=model_id,
+            choices=[], 
+            usage= CompletionUsage(
+                prompt_tokens=input_tokens_total,
+                completion_tokens=output_tokens_total,
+                total_tokens=input_tokens_total + output_tokens_total,
+            ),
+        )

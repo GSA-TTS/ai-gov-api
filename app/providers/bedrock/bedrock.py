@@ -192,7 +192,7 @@ class BedRockBackend(Backend):
                 async for chunk in bedrock_chat_stream_response_to_core(resp["stream"], model=converted.model_id, id=str(stream_id)):
                     usage = chunk.usage
                     if usage is not None:
-                        log.info("bedrock metrics", model=chunk.model, **usage.model_dump())
+                        log.info("model metrics", model=chunk.model, **usage.model_dump())
                     yield chunk
         except botocore.exceptions.ClientError as e:
             # Bedrock will inject errors as stream chunk but OpenAI does not.

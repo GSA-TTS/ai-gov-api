@@ -20,10 +20,14 @@ class MockCandidate:
         self.content = MockContent([MockPart(text)] if text else [])
         self.finish_reason = finish_reason
 
+class MockVertexUsage:
+    def __init__(self, input_tokens, output_tokens):
+        self.prompt_token_count = input_tokens
+        self.candidates_token_count = output_tokens
 class MockVertexResponse:
-    def __init__(self, candidates):
+    def __init__(self, candidates, usage=None):
         self.candidates = candidates
-
+        self.usage_metadata = usage
 
 async def make_stream(responses):
     for r in responses:
@@ -105,3 +109,20 @@ async def test_multiple_parts_in_candidate():
 
     contents = [r.choices[0].delta.content for r in results if r.choices[0].delta is not None and r.choices[0].delta.content]
     assert contents == ["Hello", " world"]  
+
+
+@pytest.mark.asyncio
+async def test_usage_collections():
+    vertex_stream = make_stream([
+        MockVertexResponse(
+            [MockCandidate()],
+            usage=MockVertexUsage(input_tokens=2, output_tokens=3)
+        )
+    ])
+    results = [r async for r in vertex_stream_response_to_core(vertex_stream, "model")]
+
+    assert results[-1].usage is not None
+    assert results[-1].usage.prompt_tokens == 2
+    assert results[-1].usage.completion_tokens == 3
+    assert results[-1].usage.total_tokens == 5
+

@@ -112,6 +112,8 @@ class VertexBackend(Backend):
         try:
             vertex_stream= await model.generate_content_async(**dict(vertex_req))
             async for vertex_response in vertex_stream_response_to_core(vertex_stream, model_id=model_id):
+                if vertex_response.usage is not None:
+                    log.info("model metrics", model=model_id, **vertex_response.usage.model_dump())
                 yield vertex_response
 
         except Exception as e:
