@@ -52,7 +52,7 @@ uv sync --no-cache --allow-insecure-host github.com --allow-insecure-host github
 
 **Declare the LLM credentials:**
 - Copy `.env_example` to `.env`
-- Change the values of Amazon Bedrock and Google Vertex
+- Change the values of Amazon Bedrock and Google Vertex (see [notes_AWS_Bedrock.md](notes_AWS_Bedrock.md) and [notes_Gogle_Vertex.md](notes_Gogle_Vertex.md) for more details)
 
 **Start the server:**
 
