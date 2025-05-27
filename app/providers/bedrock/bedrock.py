@@ -140,7 +140,7 @@ class BedRockBackend(Backend):
             except botocore.exceptions.ClientError as e:
                 raise InvalidInput(str(e), original_exception=e)
             
-            log.info("bedrock metrics", model=converted.model_id, **response['metrics'])
+            log.info("model metrics", model=converted.model_id, **response['metrics'])
         
             res = ConverseResponse(**response)
             return bedrock_chat_response_to_core(res, model=converted.model_id)
@@ -165,7 +165,7 @@ class BedRockBackend(Backend):
             headers = response['ResponseMetadata']['HTTPHeaders']
             latency = headers['x-amzn-bedrock-invocation-latency']
             token_count = headers['x-amzn-bedrock-input-token-count']
-            log.info("embedding", latency=latency, model=modelId)
+            log.info("model metrics", latency=latency, model=modelId)
             resp = await response.get("body").read()
 
             resp = CohereRepsonse.model_validate_json(resp)

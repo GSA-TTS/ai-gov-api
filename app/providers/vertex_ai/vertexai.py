@@ -1,3 +1,4 @@
+import time
 from typing import Literal, List
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -72,10 +73,16 @@ class VertexBackend(Backend):
     
         vertex_req = convert_chat_request(payload)
         try:
+            start_time = time.perf_counter_ns()
             response = await model.generate_content_async(**dict(vertex_req))
+            end_time = time.perf_counter_ns()
+            latency_ms = round((end_time - start_time) / 1_000_000)
+            log.info("model metrics", model=model_id, latencyMS=latency_ms)
         except core_exceptions.InvalidArgument as e:
             raise InvalidInput(str(e), original_exception=e)
         
+
+
         return convert_chat_vertex_response(response, model=model_id)
   
     # https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/text-embeddings-api
@@ -84,5 +91,15 @@ class VertexBackend(Backend):
         req = convert_embedding_request(payload)
         # vertex is fussy with types: model_dump() converts the TextEmbeddingInput to dicts
         # which are rejeted by the api. dict() is a shallow copy of the outer obejct
-        response: List[TextEmbedding] = await model.get_embeddings_async(**dict(req))
+        try:
+            start_time = time.perf_counter_ns()
+            response: List[TextEmbedding] = await model.get_embeddings_async(**dict(req))
+            end_time = time.perf_counter_ns()
+            latency_ms = round((end_time - start_time) / 1_000_000)
+            log.info("model metrics", model=payload.model, latencyMS=latency_ms)
+
+        except core_exceptions.InvalidArgument as e:
+            raise InvalidInput(str(e), original_exception=e)
+
+
         return vertex_embed_reposonse_to_core(response, model=payload.model)
