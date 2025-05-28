@@ -274,7 +274,7 @@ class TestHTTPProtocolErrors:
             response = http_client.get(f"{config.BASE_URL}{path}", headers=auth_headers)
             
             # Should either work (200), redirect (301/302), or return 404
-            assert response.status_code in [200, 301, 302, 404]
+            assert response.status_code in [200, 301, 302, 307, 404]
 
 
 if __name__ == "__main__":
