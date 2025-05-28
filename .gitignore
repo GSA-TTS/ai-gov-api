@@ -24,3 +24,6 @@ vertex_auth.json
 # certs
 *.pem
 *.crt 
+
+#others
+*private*
