@@ -3,7 +3,7 @@ import argparse
 import sys
 
 try:
-    from app.auth.schemas import APIKeyCreate, Scope, Role
+    from app.auth.schemas import APIKeyNew, Scope, Role
     from app.auth.utils import generate_api_key
     from app.users.schemas import UserCreate
     from app.users.repositories import UserRepository
@@ -42,7 +42,7 @@ async def create_admin_user(email: str, name: str, key_length: int):
                 if not created_user_orm.id:
                     await session.flush([created_user_orm])
 
-                api_key_schema = APIKeyCreate(
+                api_key_schema = APIKeyNew(
                     hashed_key=key_hash,
                     key_prefix=KEY_PREFIX,
                     manager_id=created_user_orm.id,

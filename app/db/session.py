@@ -16,7 +16,7 @@ async def init_db() -> None:
 
         
 async_session = async_sessionmaker(
-    bind=engine, class_=AsyncSession, autocommit=False, autoflush=False
+    bind=engine, class_=AsyncSession, autocommit=False, autoflush=True
 )
 
 # Dependency for FastAPI injection that handles session lifecyle

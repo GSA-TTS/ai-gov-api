@@ -29,7 +29,6 @@ class APIKeyBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     manager_id: UUID4
     scopes: list[Scope] = []
-    hashed_key: str
     key_prefix: str
     is_active: bool = True
     expires_at: datetime | None = None
@@ -37,8 +36,13 @@ class APIKeyBase(BaseModel):
 
 class APIKeyCreate(APIKeyBase):
     pass
+class APIKeyNew(APIKeyBase):
+    hashed_key: str
 
 class APIKeyOut(APIKeyBase):
     id: int 
     hashed_key: str
     created_at: datetime
+
+class APIKeyOutOnce(APIKeyOut):
+    token:str
