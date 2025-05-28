@@ -8,7 +8,7 @@ import logging
 from app.logs.logging_config import setup_structlog
 from app.logs.middleware import StructlogMiddleware
 from app.logs.logging_context import request_id_ctx
-from app.routers import api_v1, auth, root
+from app.routers import api_v1, root, users, tokens
 from app.common.exceptions import ResourceNotFoundError, DuplicateResourceError
 from app.db.session import engine
 from app.services.billing import billing_worker, drain_billing_queue
@@ -110,7 +110,13 @@ app.include_router(
 )
 
 app.include_router(
-    auth.router,
+    users.router,
     prefix="/users",
+    include_in_schema=False
+)
+
+app.include_router(
+    tokens.router,
+    prefix="/tokens",
     include_in_schema=False
 )
