@@ -92,3 +92,4 @@ def openai_embed_request_to_core(req: OA.EmbeddingRequest) -> EmbeddingRequest:
         dimensions = req.dimensions,
 
     )   
+

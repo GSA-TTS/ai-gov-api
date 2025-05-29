@@ -3,6 +3,20 @@ This is a FastApi application that will be able to wrap different inference back
 
 The standard interface for chat is the OpenAI Chat Completion API. 
 
+## Prepare for Zscaler
+Run the following commands ONLY when you are under Zscaler and are having Zscaler-related SSL issues.
+
+```bash
+# Create a custom certificate bundle
+cat zscaler.pem $(python -c "import certifi; print(certifi.where())") > custom-ca-bundle.pem
+
+# Set multiple environment variables
+export SSL_CERT_FILE=$(pwd)/custom-ca-bundle.pem
+export REQUESTS_CA_BUNDLE=$(pwd)/custom-ca-bundle.pem
+export CURL_CA_BUNDLE=$(pwd)/custom-ca-bundle.pem
+export PYTHONHTTPSVERIFY=0
+```
+
 ## Running Dev:
 
 Keep uv up-to-date:
@@ -27,11 +41,20 @@ Add the connection string to a .env to pull it into the settings (see .env_examp
 This project uses `uv`. You should be able to install it by following the [installation documentation](https://docs.astral.sh/uv/getting-started/installation/). The `curl` shell command is the recommended and fastest way to install uv.
 
 Once installed you can sync the dependencies. This will automatically create a `.venv` folder, but you can generally ignore it while using uv. 
-```
+```bash
 uv sync
 ```
 
-Start the server:
+Run the following command instead if Zscaler causes issues with the above command
+```bash
+uv sync --no-cache --allow-insecure-host github.com --allow-insecure-host githubusercontent.com
+```
+
+**Declare the LLM credentials:**
+- Copy `.env_example` to `.env`
+- Change the values of Amazon Bedrock and Google Vertex (see [notes_AWS_Bedrock.md](notes_AWS_Bedrock.md) and [notes_Gogle_Vertex.md](notes_Gogle_Vertex.md) for more details)
+
+**Start the server:**
 
 ```
 uv run fastapi dev
