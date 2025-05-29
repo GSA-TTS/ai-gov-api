@@ -23,13 +23,18 @@ class UserRepository:
         result = await self.session.execute(
             select(User).where(User.id==user_id)
         )
-        return result.scalars().one_or_none()
+        result = result.scalars().one_or_none()
+        if result is None:
+            raise ResourceNotFoundError(resource_name='User', identifier=user_id)
+        return result
     
     async def get_by_email(self, email: str) -> User | None:
         result = await self.session.execute(
             select(User).where(User.email==email)
         )
-        result = result.scalars().first()
+        result = result.scalars().one_or_none()
+        if result is None:
+            raise ResourceNotFoundError(resource_name='User', identifier=email)
         return result
 
     async def update(self, email:str, user:UserUpdate) -> User:

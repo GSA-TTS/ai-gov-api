@@ -42,5 +42,5 @@ def test_required_scopes(key_scopes, required_scopes, is_valid):
     else:
         with pytest.raises(HTTPException) as exc_info:
             returned_key = scope(api_key)
-        assert exc_info.value.status_code == status.HTTP_401_UNAUTHORIZED
+        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
         assert "Not Authorized" in exc_info.value.detail
