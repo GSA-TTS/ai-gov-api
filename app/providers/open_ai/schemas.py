@@ -2,7 +2,6 @@ from pydantic import (
     Base64Bytes,
     BaseModel,
     ConfigDict,
-    confloat,
     Field,
     field_serializer,
     NonNegativeInt,
@@ -110,12 +109,16 @@ class ChatCompletionRequest(BaseModel):
     model: str = Field(..., description="The model to use for chat completion")
     messages: Sequence[ChatCompletionMessage] = Field(..., description="A list of messages from the conversation so far")
    
-    temperature: Optional[Annotated[float, confloat(ge=0, le=2)]] = Field(
+    temperature: Optional[float] = Field(
         default=None,
+        ge=0, 
+        le=2,
         description="What sampling temperature: between 0 and 2"
     )
     
-    top_p: Optional[Annotated[float, confloat(ge=0, le=1)]] = Field(
+    top_p: Optional[float] = Field(
+        ge=0,
+        le=1,
         default=None,
         description="An alternative to sampling with temperature, called nucleus sampling"
     )
@@ -135,17 +138,21 @@ class ChatCompletionRequest(BaseModel):
         description="Up to 4 sequences where the API will stop generating"
     )
     
-    max_tokens: Optional[int] = Field(
+    max_tokens: Optional[PositiveInt] = Field(
         default=None,
         description="The maximum number of tokens to generate"
     )
     
-    presence_penalty: Optional[Annotated[float, confloat(ge=-2.0, le=2.0)]] = Field(
+    presence_penalty: Optional[float] = Field(
+        ge=-2.0,
+        le=2.0,
         default=0,
         description="Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far"
     )
     
-    frequency_penalty: Optional[Annotated[float, confloat(ge=-2.0, le=2.0)]]= Field(
+    frequency_penalty: Optional[float]= Field(
+        ge=-2.0,
+        le=2.0,
         default=0,
         description="Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far"
     )
