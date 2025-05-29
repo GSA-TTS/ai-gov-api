@@ -132,6 +132,7 @@ class ConverseResponseUsage(BaseBedrockModel):
     total_tokens: NonNegativeInt
 
 class ConverseResponseOutput(BaseBedrockModel):
+    model_config = ConfigDict(extra="allow")
     role: Literal["assistant"]
     content: List[Union[ContentTextBlock, ToolUseBlock]]
 
