@@ -156,6 +156,15 @@ class ChatCompletionRequest(BaseModel):
         description="A unique identifier representing your end-user"
     )
 
+class ChatCompletionTokensDetails(BaseModel):
+    # this is currently a stub, since it's in
+    # the OpenAI spec, but there's no direct eqivelant 
+    # in either bedrock or vertex
+    accepted_prediction_tokens: int
+    audio_tokens: int
+    reasoning_tokens: int
+    rejected_prediction_tokens: int
+    
 class ChatCompletionUsage(BaseModel):
     """Report of token use for a particular call"""
     prompt_tokens: int
@@ -291,3 +300,28 @@ class EmbeddingResponse(BaseModel):
         extra='ignore'
     )
    
+
+   # --- Stream Response Models ---
+
+class StreamResponseDelta(BaseModel):
+    content: Optional[str] = None
+    refusal: Optional[str] = None
+    role: Optional[str] = None
+
+class StreamResponseChoice(BaseModel):
+    delta: StreamResponseDelta
+    finish_reason: Optional[str] = None
+    index: int
+class StreamResponse(BaseModel):
+    id: str
+    choices: List[StreamResponseChoice]
+    model: str
+    created: datetime
+    object: Literal["chat.completion.chunk"] = "chat.completion.chunk"
+    service_tier: Optional[str] = None
+    system_fingerprint: str
+    usage: Optional[ChatCompletionUsage] = None
+
+    @field_serializer('created')
+    def serialize_dt(self, created: datetime, _info):
+        return int(created.timestamp())

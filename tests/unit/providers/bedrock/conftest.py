@@ -51,8 +51,8 @@ def bedrock_chat_response():
             ]
         )},
         usage=ConverseResponseUsage(
-            inputTokens=10,
-            outputTokens=12,
-            totalTokens=22
+            input_tokens=10,
+            output_tokens=12,
+            total_tokens=22
         )
     )
