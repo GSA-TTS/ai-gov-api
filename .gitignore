@@ -20,3 +20,10 @@ vertex_auth.json
 
 # notebook checkpoints
 .ipynb_checkpoints
+
+# certs
+*.pem
+*.crt 
+
+#others
+*private*

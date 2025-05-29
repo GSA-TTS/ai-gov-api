@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<!-- This is a simple html page to use for testing streaming responses from LLMs-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Stream Test</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"], textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        #responseArea {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            background-color: #f9f9f9;
+            min-height: 100px;
+            white-space: pre-wrap; /* Preserve line breaks and spaces */
+            word-wrap: break-word;
+            border-radius: 4px;
+        }
+        .status { margin-top: 10px; font-style: italic; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LLM Stream Test</h1>
+
+        <div>
+            <label for="apiUrl">API URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:8000/api/v1/chat/completions">
+        </div>
+
+        <div>
+            <label for="apiKey">API Key:</label>
+            <input type="password" id="apiKey" placeholder="Enter your API key (if required)">
+        </div>
+
+        <div>
+            <label for="modelName">Model Name (required):</label>
+            <input type="text" id="modelName" placeholder="e.g., claude_3_5_sonnet">
+        </div>
+
+        <div>
+            <label for="prompt">Prompt:</label>
+            <textarea id="prompt" placeholder="Enter your prompt here..."></textarea>
+        </div>
+
+        <button id="sendButton">Send Request</button>
+
+        <div class="status" id="status"></div>
+
+        <h2>Response:</h2>
+        <div id="responseArea"></div>
+    </div>
+
+    <script>
+        const apiUrlInput = document.getElementById('apiUrl');
+        const apiKeyInput = document.getElementById('apiKey');
+        const modelNameInput = document.getElementById('modelName');
+        const promptInput = document.getElementById('prompt');
+        const sendButton = document.getElementById('sendButton');
+        const responseArea = document.getElementById('responseArea');
+        const statusDiv = document.getElementById('status');
+
+        sendButton.addEventListener('click', async () => {
+            const apiUrl = apiUrlInput.value.trim();
+            const apiKey = apiKeyInput.value.trim(); // Can be empty
+            const modelName = modelNameInput.value.trim();
+            const promptText = promptInput.value.trim();
+
+            if (!apiUrl || !modelName || !promptText) {
+                alert("Please enter API URL, Model Name, and a Prompt.");
+                return;
+            }
+
+            responseArea.textContent = ''; 
+            statusDiv.textContent = 'Sending request...';
+            sendButton.disabled = true;
+
+            const requestBody = {
+                model: modelName,
+                messages: [
+                    { role: "user", content: promptText }
+                ],
+                stream: true
+            };
+
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text(); 
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                if (!response.body) {
+                    throw new Error("ReadableStream not available.");
+                }
+
+                statusDiv.textContent = 'Streaming response...';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        statusDiv.textContent = 'Stream finished.';
+                        break;
+                    }
+
+                    buffer += decoder.decode(value, { stream: true });
+
+                    let boundary = buffer.indexOf('\n\n');
+                    while (boundary !== -1) {
+                        const chunkString = buffer.substring(0, boundary);
+                        buffer = buffer.substring(boundary + 2);
+
+                        if (chunkString.startsWith('data: ')) {
+                            const jsonData = chunkString.substring(6).trim();
+                            if (jsonData === '[DONE]') {
+                                statusDiv.textContent = 'Stream finished (DONE signal received).';
+                                if (!done) reader.cancel(); 
+                                sendButton.disabled = false;
+                                return; 
+                            }
+                            try {
+                                const parsedChunk = JSON.parse(jsonData);
+                                const content = parsedChunk.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    responseArea.textContent += content;
+                                }
+                            } catch (e) {
+                                console.warn("Failed to parse JSON chunk:", jsonData, e);
+                            }
+                        }
+                        boundary = buffer.indexOf('\n\n');
+                    }
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                responseArea.textContent = `Error: ${error.message}`;
+                statusDiv.textContent = `Error: ${error.message}`;
+            } finally {
+                sendButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

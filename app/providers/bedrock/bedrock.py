@@ -16,8 +16,8 @@ It has three part:
 
 
 import structlog
-from typing import  Literal
-
+from typing import  Literal, AsyncGenerator
+from uuid import uuid4
 import aioboto3
 from aiobotocore.config import AioConfig
 import botocore.exceptions
@@ -25,11 +25,11 @@ import botocore.exceptions
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.providers.exceptions import InvalidInput
+from app.providers.exceptions import ModelError, InvalidInput
 from app.providers.base import Backend, LLMModel
 from .adapter_from_core import core_to_bedrock, core_embed_request_to_bedrock
-from .adapter_to_core import bedrock_chat_response_to_core, bedorock_embed_reposonse_to_core
-from ..core.chat_schema import ChatRequest, ChatRepsonse
+from .adapter_to_core import bedrock_chat_response_to_core, bedorock_embed_reposonse_to_core, bedrock_chat_stream_response_to_core
+from ..core.chat_schema import ChatRequest, ChatRepsonse, StreamResponse
 from ..core.embed_schema import EmbeddingResponse, EmbeddingRequest
 from .converse_schemas import ConverseResponse
 from .cohere_embedding_schemas import CohereRepsonse
@@ -128,6 +128,9 @@ class BedRockBackend(Backend):
 
 
     async def invoke_model(self, payload: ChatRequest) -> ChatRepsonse:
+        '''
+        Involke the Converse API for non-streaming requests.
+        '''
         converted = core_to_bedrock(payload)
         session = aioboto3.Session()
         async with session.client("bedrock-runtime", config=self.retry_config) as client:
@@ -153,8 +156,6 @@ class BedRockBackend(Backend):
 
         session = aioboto3.Session()        
         async with session.client("bedrock-runtime", config=self.retry_config) as client:
-            
-
             response = await client.invoke_model(
                 body=body,
                 modelId=modelId,
@@ -171,3 +172,37 @@ class BedRockBackend(Backend):
             resp = CohereRepsonse.model_validate_json(resp)
 
             return bedorock_embed_reposonse_to_core(model=modelId, resp=resp, token_count=token_count)
+
+
+    async def stream_events(self, payload: ChatRequest)  ->  AsyncGenerator[StreamResponse, None]:
+        '''
+        Takes a request that has indicated stream=true and processes the stream
+        via bedrock, yielding cor.StreamResponse chunks 
+        '''
+        try:
+            converted = core_to_bedrock(payload)
+            arn = getattr(self.settings.bedrock_models, converted.model_id).arn
+            body = converted.model_dump(exclude_none=True, by_alias=True)
+            body['modelId'] = arn
+            stream_id = f"chatcmpl-{uuid4()}"
+
+            session = aioboto3.Session()
+            async with session.client("bedrock-runtime") as client:
+                resp = await client.converse_stream(**body)
+                async for chunk in bedrock_chat_stream_response_to_core(resp["stream"], model=converted.model_id, id=str(stream_id)):
+                    usage = chunk.usage
+                    if usage is not None:
+                        log.info("model metrics", model=chunk.model, **usage.model_dump())
+                    yield chunk
+        except botocore.exceptions.ClientError as e:
+            # Bedrock will inject errors as stream chunk but OpenAI does not.
+            # Mid stream errors are probably not recoverable since
+            # the stream response has been returned at this point.
+            # So just log and raise
+            log.exception(e)
+            raise ModelError(str(e), original_exception=e)
+        except Exception as e:
+            log.exception(e)
+            raise ModelError(str(e), original_exception=e)
+
+        

@@ -49,6 +49,7 @@ def convert_chat_request(req: ChatRequest) -> VertexGenerateRequest:
 
     return VertexGenerateRequest(
         contents=vertex_history,
+        stream=req.stream,
         generation_config=GenerationConfig(
             temperature=req.temperature,
             max_output_tokens=req.max_tokens,

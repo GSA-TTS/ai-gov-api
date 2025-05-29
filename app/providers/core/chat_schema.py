@@ -82,3 +82,24 @@ class ChatRepsonse(BaseModel):
     model: str
     choices: List[Response]
     usage: CompletionUsage
+
+
+# ----> Chat Response Model <---- #
+
+class StreamResponseDelta(BaseModel):
+    content: Optional[str] = None
+    refusal: Optional[str] = None
+    role: Optional[str] = None
+
+class StreamResponseChoice(BaseModel):
+    delta: Optional[StreamResponseDelta] = None
+    finish_reason: Optional[str] = None
+    index: int
+class StreamResponse(BaseModel):
+    id: str
+    choices: List[StreamResponseChoice]
+    model: str
+    created: datetime
+    object: Literal["chat.completion.chunk"] = "chat.completion.chunk"
+    service_tier: Optional[str] = None
+    usage: Optional[CompletionUsage] = None

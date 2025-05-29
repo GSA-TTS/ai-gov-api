@@ -9,9 +9,9 @@ capabilities they have (currently just chat and embedding).
 """
 
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, AsyncGenerator
 from pydantic import BaseModel
-from .core.chat_schema import ChatRequest, ChatRepsonse
+from .core.chat_schema import ChatRequest, ChatRepsonse, StreamResponse
 from .core.embed_schema import EmbeddingRequest
 class LLMModel(BaseModel):
     '''
@@ -38,6 +38,12 @@ class Backend(ABC):
     async def embeddings(self, payload:EmbeddingRequest):
         """Handles requests for embeddings. Raises NotImplementedError if not supported."""
         raise NotImplementedError(f"{self.__class__.__name__} does not support embeddings.")
+    
+    async def stream_events(self, payload: ChatRequest)  ->  AsyncGenerator[StreamResponse, None]:
+        raise NotImplementedError(f"{self.__class__.__name__} does not support embeddings.")
+        # make the type system know this is really an asyncgenerator
+        if False: # pragma: no cover
+            yield # type: ignore
 
 
     @property  
