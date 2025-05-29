@@ -67,16 +67,23 @@ class ContentJSONBlock(BaseBedrockModel):
 ContentBlock = Union[ContentTextBlock, ContentImageBlock, ContentDocumentBlock]
 
 # For tool use request from the model
-class ToolUseBlock(BaseBedrockModel):
+class ToolUseBlockContent(BaseBedrockModel):
     tool_use_id: str
     name: str
     input: Dict[str, Any]
 
+class ToolUseBlock(BaseBedrockModel):
+    tool_use: ToolUseBlockContent
+
+
 # For subsequent reuest when passing tool results back to model
-class ToolResultBlock(BaseBedrockModel):
+class ToolResultBlockContent(BaseBedrockModel):
     tool_use_id: str 
     content: List[Union[ContentBlock, ContentJSONBlock]]   
-    status: Literal["success", "error"] = "success"
+    status: Optional[Literal["error"]] = Field(default=None)
+
+class ToolResultBlock(BaseBedrockModel):
+    tool_result: ToolResultBlockContent
 
 # Message Level content can also contain tool blocks:
 MessageContentBlock = Union[ContentBlock, ToolResultBlock]
@@ -139,6 +146,7 @@ class ConverseResponseOutput(BaseBedrockModel):
 class ConverseResponse(BaseBedrockModel):
         output: dict[Literal["message"], ConverseResponseOutput]
         usage: ConverseResponseUsage
+        stop_reason: Optional[str] = None
 
 # ----- stream response ----
 
@@ -167,7 +175,6 @@ class ContentBlockDeltaDetailsToolUse(BaseBedrockModel):
     input: str # Tool input is typically a JSON string here
 
 class ContentBlockDeltaToolUse(BaseBedrockModel):
-
     tool_use: ContentBlockDeltaDetailsToolUse
     
 class ContentBlockDeltaContent(BaseBedrockModel):
