@@ -37,6 +37,7 @@ class ImagePart(BaseModel):
 class FilePart(BaseModel):
     type: Literal["file"] = "file"
     mime_type: str
+    name: Optional[str] = Field(default=None)
     bytes_: bytes = Field(..., alias="bytes")
 
 ContentPart = Annotated[TextPart | ImagePart | FilePart, Field(discriminator="type")]
