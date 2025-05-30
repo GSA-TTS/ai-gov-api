@@ -27,7 +27,7 @@ non_empty_string = Annotated[
 class ImageUrl(BaseModel):
     """
     Defines the structure for an image URL input.
-    To simplify egress concerns, we don't supprt HTTPS urls at the moment.
+    To simplify egress concerns, we don't support HTTPS urls at the moment.
     """
     model_config = ConfigDict(extra="ignore")
 
@@ -115,13 +115,26 @@ ChatCompletionMessage = Annotated[
     Field(discriminator="role"),
 ]
 
-class ToolDefinition(BaseModel):
-    """Describes a tool (function) the model may call."""
-    type: Literal["function"] = "function"
-    function: dict = Field(
-        ...,
-        description="Function definition, including 'name', 'description', and 'parameters'",
+class FunctionParameters(BaseModel):
+    type: Literal["object"] = "object"
+    properties: dict = Field(
+        ..., description="Parameter properties as JSON Schema objects"
     )
+    required: Optional[List[str]] = None
+
+class FunctionObject(BaseModel):
+    name: str = Field(..., description="The name of the function")
+    description: Optional[str] = Field(
+        None, description="A description of what the function does"
+    )
+    parameters: FunctionParameters = Field(
+        ..., description="Parameters the function accepts, as a JSON Schema object"
+    )
+
+class ToolDefinition(BaseModel):
+    """Describes a tool (function) the model may call"""
+    type: Literal["function"] = "function"
+    function: FunctionObject
 
 class ChatCompletionRequest(BaseModel):
     model_config = {
@@ -206,7 +219,7 @@ class ChatCompletionRequest(BaseModel):
 
 class ChatCompletionTokensDetails(BaseModel):
     # this is currently a stub, since it's in
-    # the OpenAI spec, but there's no direct eqivelant 
+    # the OpenAI spec, but there's no direct equivalent 
     # in either bedrock or vertex
     accepted_prediction_tokens: int
     audio_tokens: int
@@ -220,14 +233,15 @@ class ChatCompletionUsage(BaseModel):
     total_tokens: int
 
 class ChatCompletionResponseMessage(BaseModel):
-    """The LLM repsonse"""
+    """The LLM response"""
     role: Literal["assistant"] = "assistant"
-    content: str
-
+    content: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
+    
 class ChatCompletionChoice(BaseModel):
     index: NonNegativeInt
     message: ChatCompletionResponseMessage
-    finish_reason: Optional[Literal["stop"]] = "stop"
+    finish_reason: Optional[Literal["stop", "length", "tool_calls"]] = "stop"
 
 
 class ChatCompletionResponse(BaseModel):
