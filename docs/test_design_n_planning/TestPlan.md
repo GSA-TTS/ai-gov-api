@@ -977,10 +977,6 @@ A comprehensive security testing strategy is critical, aligned with OWASP API Se
     * Develop security test prioritization methodology
     * Create weighted scoring for different risk factors
 
-* Further details are at:  
-  * [APItest\_InputValidation\_InjectionTesting](https://docs.google.com/document/d/1hwuea0A3-f1v7TsH3wy1AWBaXlWYi3tImAUt3HauuD8/edit?usp=sharing)  
-  * [APItest\_DataExposure](https://docs.google.com/document/d/1p7ulSCOnFX9EDyAOvVhX2TR5AkKsZdJJ89eq9UTpkpk/edit?usp=sharing)
-
 ## 7.4. Performance Testing
 
 (Ref: DoD API Tech Guide Sec 4.7; NIST SP 800-228 Sec 2.4)
@@ -1575,10 +1571,6 @@ A comprehensive security testing strategy is critical, aligned with OWASP API Se
     * Test error context completeness and accuracy
     * Validate trace collection during error conditions
 
-* Further details are at:  
-  * [APItest\_Error Code Validation](https://docs.google.com/document/d/1DDAhf4FLtKDqYE9IXHfIeUhxN0ZQ_cNVCnbIx2LvXNo/edit?usp=sharing)  
-  * [APItest\_Call Sequence Testing](https://docs.google.com/document/d/1ubGpl2eoW6BrDmGX-ADwLCh8Bo4rxxvP5Z7jLk17AAg/edit?usp=sharing)
-
 * *Note: For security aspects of error handling (information disclosure), see Section 7.3*
 * *Note: For performance impact of retries and failovers, see Section 7.4*
 
@@ -1866,9 +1858,6 @@ A comprehensive security testing strategy is critical, aligned with OWASP API Se
     * Scheduled test data regeneration
     * Automated detection of stale test data
     * Pipeline for introducing new test data varieties
-
-* More details are in:  
-  * [APItest\_DataAnonymization](https://docs.google.com/document/d/1nAKS_vPMnVrnYz_uh6vBruui1X_rFRTyx1Sy73QmrTE/edit?usp=sharing)
 
 ## 7.10. Test Environment Strategy
 
