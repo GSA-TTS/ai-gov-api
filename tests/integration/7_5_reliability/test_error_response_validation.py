@@ -6,8 +6,13 @@ import httpx
 import asyncio
 from typing import Dict, Any, List
 
-from ..config import config, logger
-from ..utils.security_validators import SecurityValidator
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import config, logger
+from utils.security_validators import SecurityValidator
 
 
 class TestErrorResponseValidation:

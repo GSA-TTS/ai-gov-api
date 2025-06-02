@@ -5,8 +5,13 @@ import pytest
 import httpx
 from typing import Dict, Any, List
 
-from ..config import config, logger
-from ..fixtures.multimodal_fixtures import MultiModalFixtures
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config import config, logger
+from fixtures.multimodal_fixtures import MultiModalFixtures
 
 
 class TestInputValidation:
