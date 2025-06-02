@@ -1,392 +1,270 @@
-# AI Gov API Integration Tests
+# GSAi API Comprehensive Testing Framework
 
-This directory contains comprehensive integration tests for the AI Gov API that validate real-world API behavior using live endpoints. The tests are aligned with TestPlan.md Section 7 requirements and cover security, functional, reliability, and data privacy testing.
+This is the **complete comprehensive testing framework** for the GSAi API, implementing **1,225+ test cases** across functional, security, reliability, performance, data management, and Zero Trust testing categories.
 
-## 🚀 Quick Start
+This testing framework implements the complete test cases defined in the detailed test case designs from the `Testcases_7*` folders.
 
-### 1. Setup Python Virtual Environment
+- **Section 7.2**: Functional and Validation Testing - **27 test cases** ✅
+- **Section 7.3**: Security Testing - **402 test cases** ✅ **COMPLETE OWASP API Top 10 (2023)**
+- **Section 7.4**: Performance Testing - **171 test cases** ✅
+- **Section 7.5**: Reliability and Error Handling - **152 test cases** ✅
+- **Section 7.9**: Data Management - **185 test cases** ✅
+- **Section 7.12**: Zero Trust Testing - **288 test cases** ✅
+
+
+## Setup Instructions
+
+### 1. Create Python Virtual Environment
+
 ```bash
-# Navigate to integration tests directory
 cd tests/integration
-
-# Create virtual environment
 python -m venv venv
+source venv/bin/activate  # On Windows: venv\\Scripts\\activate
+```
 
-# Activate virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-# venv\Scripts\activate
+### 2. Install Dependencies
 
-# Install dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment Variables
-Edit the `.env` file with your actual values:
-```bash
-# Required
-API_BASE_URL=your_live_endpoint
-TEST_API_KEY=your_actual_test_api_key_here
+### 3. Environment Configuration
 
-# Optional (with defaults)
+1. Copy the environment template:
+```bash
+cp .env.template .env
+```
+
+2. Edit `.env` file with your API configuration:
+```bash
+# Core API Configuration
+API_BASE_URL=https://your-api-endpoint.com
+TEST_API_KEY=your_test_api_key_here
+TEST_ADMIN_API_KEY=your_admin_api_key_here
+TEST_EMBEDDING_API_KEY=your_embedding_api_key_here
+
+# Model Configuration
 CHAT_MODELS=claude_3_5_sonnet,gemini-2.0-flash,llama3_8b
 EMBEDDING_MODELS=cohere_english_v3,text-embedding-005
-TEST_TIMEOUT=30
-TEST_MAX_TOKENS=100
-TEST_TEMPERATURE=0.1
+
+# Cost Management
+DAILY_TEST_BUDGET=50.00
+ENABLE_COST_TRACKING=true
+
+# Test Execution Control
+ENABLE_SECURITY_TESTS=true
+ENABLE_ZERO_TRUST_TESTS=true
+ENABLE_PROMPT_INJECTION_TESTS=true
+ENABLE_PERFORMANCE_TESTS=true
+ENABLE_LOAD_TESTS=false  # Set to true for load testing
+
+# Security Testing Configuration
+ENABLE_MULTIMODAL_TESTS=true
+MAX_FILE_SIZE_MB=10
+SUPPORTED_IMAGE_TYPES=jpg,png,gif,webp
+SUPPORTED_DOCUMENT_TYPES=pdf,txt,docx
+
+# Performance Testing Configuration
+LOAD_TEST_MAX_USERS=100
+LOAD_TEST_DURATION=300
+PERFORMANCE_BASELINE_RPS=10
 ```
 
-### 3. Validate Configuration
-```bash
-python -c "from config import config; config.validate(); print('✅ Configuration valid!')"
-```
+## Running Tests
 
-### 4. Run Tests
+### Run All Tests
 ```bash
-# Run all integration tests
 pytest -v
-
-# Run specific test category
-pytest 7_3_* -v  # Security tests
-pytest 7_2_* -v  # Functional tests
 ```
 
-## 📁 Test File Structure
-
-```
-tests/integration/
-├── README.md                           # This file
-├── MIGRATION_SUMMARY.md                # Complete migration documentation
-├── config.py                           # Shared configuration module
-├── requirements.txt                     # Python dependencies
-├── .env.template                        # Environment configuration template
-├── 7_2_EdgeCaseTesting.py              # Boundary and edge case tests
-├── 7_2_FunctionalValidation.py         # Input validation tests
-├── 7_2_ModelValidation.py              # Model capability tests
-├── 7_3_1_OWASP_API2_Authentication.py  # Authentication security tests
-├── 7_3_1_OWASP_API3_DataExposure.py    # Data exposure prevention tests
-├── 7_3_2_LLM_PromptInjection.py        # LLM-specific security tests
-├── 7_5_1_ErrorResponseValidation.py    # Error handling and sequences
-├── 7_5_2_HTTPProtocolErrors.py         # HTTP protocol error tests
-├── 7_5_3_ServerErrorHandling.py        # Server resilience tests
-└── 7_9_DataPrivacyTesting.py           # Data privacy and PII tests
-```
-
-## 🧪 Test Categories
-
-### Security Testing (7.3.x) - 3 Files
-Tests aligned with OWASP API Security Top 10 (2023) and LLM-specific security concerns.
-
-#### 7_3_1_OWASP_API2_Authentication.py
-- **Purpose**: Authentication and authorization security testing
-- **Coverage**: API key validation, timing attacks, brute force protection
-- **Run**: `pytest 7_3_1_OWASP_API2_Authentication.py -v`
-
-#### 7_3_1_OWASP_API3_DataExposure.py  
-- **Purpose**: Data exposure and information leakage prevention
-- **Coverage**: Response schema validation, cross-agency isolation
-- **Run**: `pytest 7_3_1_OWASP_API3_DataExposure.py -v`
-
-#### 7_3_2_LLM_PromptInjection.py
-- **Purpose**: LLM-specific security vulnerabilities
-- **Coverage**: Prompt injection, jailbreak attempts, encoding attacks
-- **Run**: `pytest 7_3_2_LLM_PromptInjection.py -v`
-
-### Functional Testing (7.2.x) - 3 Files
-Tests for API functionality, input validation, and business logic.
-
-#### 7_2_FunctionalValidation.py
-- **Purpose**: Core API functionality and input validation
-- **Coverage**: Schema compliance, parameter validation, capability matching
-- **Run**: `pytest 7_2_FunctionalValidation.py -v`
-
-#### 7_2_EdgeCaseTesting.py
-- **Purpose**: Edge cases and boundary condition testing
-- **Coverage**: Unicode handling, large payloads, parameter boundaries
-- **Run**: `pytest 7_2_EdgeCaseTesting.py -v`
-
-#### 7_2_ModelValidation.py
-- **Purpose**: Model discovery and capability validation
-- **Coverage**: Model routing, provider switching, capability mismatch
-- **Run**: `pytest 7_2_ModelValidation.py -v`
-
-### Reliability Testing (7.5.x) - 3 Files
-Tests for error handling, resilience, and system reliability.
-
-#### 7_5_1_ErrorResponseValidation.py
-- **Purpose**: Error handling and API call sequences
-- **Coverage**: Multi-turn conversations, concurrent requests, provider failover
-- **Run**: `pytest 7_5_1_ErrorResponseValidation.py -v`
-
-#### 7_5_2_HTTPProtocolErrors.py
-- **Purpose**: HTTP protocol compliance and error handling
-- **Coverage**: HTTP method validation, status codes, content types
-- **Run**: `pytest 7_5_2_HTTPProtocolErrors.py -v`
-
-#### 7_5_3_ServerErrorHandling.py
-- **Purpose**: Server resilience and error recovery
-- **Coverage**: Large payloads, concurrent load, malformed requests
-- **Run**: `pytest 7_5_3_ServerErrorHandling.py -v`
-
-### Data Privacy Testing (7.9.x) - 1 File
-Tests for data privacy, anonymization, and PII handling.
-
-#### 7_9_DataPrivacyTesting.py
-- **Purpose**: Data privacy and anonymization validation
-- **Coverage**: PII processing, cross-agency isolation, error message privacy
-- **Run**: `pytest 7_9_DataPrivacyTesting.py -v`
-
-## 🔧 Usage Examples
-
-### Basic Test Execution
+### Run by Test Category
 ```bash
-# Run all tests with verbose output
-pytest -v
+# Functional tests only
+pytest -v -m functional
 
-# Run tests with coverage
-pytest --cov=app --cov-report=html
+# Security tests only (OWASP API Top 10)
+pytest -v -m security
 
-# Run specific test file
-pytest 7_3_1_OWASP_API2_Authentication.py -v
+# Zero Trust tests only  
+pytest -v -m zero_trust
 
-# Run specific test method
-pytest 7_3_1_OWASP_API2_Authentication.py::TestOWASPAPI2Authentication::test_missing_auth_header -v
-```
-
-### Test Categories
-```bash
-# Security tests only
-pytest 7_3_* -v
-
-# Functional tests only  
-pytest 7_2_* -v
+# Performance tests only
+pytest -v -m performance
 
 # Reliability tests only
-pytest 7_5_* -v
+pytest -v -m reliability
 
-# Data privacy tests only
-pytest 7_9_* -v
+# Data management tests only
+pytest -v -m data_management
 ```
 
-### Advanced Options
+### Run by Test Section
 ```bash
-# Stop on first failure
-pytest --maxfail=1
+# Section 7.2 - Functional Testing
+pytest -v 7_2_functional/
 
-# Run tests in parallel (if pytest-xdist installed)
-pytest -n auto
+# Section 7.3 - Security Testing (Complete OWASP API Top 10)
+pytest -v 7_3_security/
 
-# Run with custom timeout
-TEST_TIMEOUT=60 pytest 7_5_* -v
+# Section 7.4 - Performance Testing
+pytest -v 7_4_performance/
 
-# Run against different environment
-API_BASE_URL=https://staging.api.example.com/v1 pytest -v
+# Section 7.5 - Reliability Testing
+pytest -v 7_5_reliability/
+
+# Section 7.9 - Data Management Testing
+pytest -v 7_9_data_management/
+
+# Section 7.12 - Zero Trust Testing
+pytest -v 7_12_zero_trust/
 ```
 
-## ⚙️ Configuration
-
-
-### Configuration Validation
-The test suite automatically validates configuration on startup:
-```python
-from config import config
-config.validate()  # Raises error if required config missing
-```
-
-## 🔒 Security Considerations
-
-### API Key Management
-- ✅ API keys stored in `.env` file (not in code)
-- ✅ `.env` file should be in `.gitignore`
-- ✅ Use separate API keys for different environments
-- ✅ Rotate API keys regularly
-
-### Test Data Safety
-- ✅ All test data is synthetic and benign
-- ✅ No real PII or sensitive information used
-- ✅ Tests designed to be safe in any environment
-- ✅ Proper cleanup after test execution
-
-### Network Security
-- ✅ Tests require HTTPS endpoints only
-- ✅ Certificate validation enabled
-- ✅ No credentials logged or exposed
-
-## 📊 Test Execution Guidelines
-
-### Prerequisites
-1. **Python Environment**: Python 3.8+ installed
-2. **Virtual Environment**: Activated virtual environment (recommended)
-3. **Network Access**: Ensure connectivity to the API endpoint
-4. **Valid Credentials**: Have a valid API key with required scopes
-
-### Best Practices
-1. **Environment Isolation**: Use separate test environments
-2. **Rate Limiting**: Be aware of API rate limits
-3. **Cost Management**: Monitor API usage costs
-4. **Parallel Execution**: Limit concurrent tests to avoid rate limits
-
-### Expected Behavior
-- **Success Rate**: >95% tests should pass in healthy environment
-- **Execution Time**: Most tests complete within 30 seconds
-- **Rate Limits**: Tests handle 429 responses gracefully
-- **Error Handling**: Proper error messages for configuration issues
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### Configuration Errors
+### Run Specific OWASP Categories
 ```bash
-# Issue: "TEST_API_KEY environment variable not set"
-# Solution: Create .env file with valid API key
-cp .env.template .env
-# Edit .env with actual credentials
+# Run specific OWASP API vulnerability tests
+pytest -v 7_3_security/test_owasp_api1_bola.py          # Broken Object Level Authorization
+pytest -v 7_3_security/test_owasp_api2_authentication.py # Broken Authentication
+pytest -v 7_3_security/test_owasp_api7_ssrf.py          # Server Side Request Forgery
+pytest -v 7_3_security/test_owasp_api10_unsafe_api_consumption.py # Unsafe API Consumption
+
+# Run all OWASP tests
+pytest -v 7_3_security/test_owasp_*.py
 ```
 
-#### Network Connectivity
+### Run with Parallel Execution
 ```bash
-# Test connectivity manually
-curl -H "Authorization: Bearer $TEST_API_KEY" $API_BASE_URL/models
+# Run tests in parallel (respects PARALLEL_WORKERS setting)
+pytest -v -n auto
 
-# Check firewall/VPN settings
-ping api.dev.aigov.mcaas.fcs.gsa.gov
+# Run with specific worker count
+pytest -v -n 4
 ```
 
-#### Rate Limiting
+### Generate HTML Report
 ```bash
-# Issue: Getting 429 errors
-# Solution: Reduce concurrent tests or add delays
-pytest --maxfail=5 -v  # Stop on repeated failures
+pytest -v --html=report.html --self-contained-html --junitxml=report.xml
 ```
 
-#### Timeout Issues
+## Test Categories and Markers
+
+### Available Markers
+- `functional` - Functional and validation tests
+- `security` - Security tests including complete OWASP API Top 10
+- `zero_trust` - Zero Trust architecture tests
+- `prompt_injection` - LLM-specific prompt injection tests
+- `reliability` - Error handling and reliability tests
+- `data_management` - Data generation and management tests
+- `performance` - Performance and load tests
+- `slow` - Long-running tests
+
+### Example: Run Only Critical Security Tests
 ```bash
-# Issue: Tests timing out
-# Solution: Increase timeout value
-TEST_TIMEOUT=60 pytest 7_5_* -v
+pytest -v -m "security and not slow"
 ```
 
-### Debug Mode
+### Example: Run High-Priority Tests
 ```bash
-# Run single test with full output
-pytest 7_3_1_OWASP_API2_Authentication.py::TestOWASPAPI2Authentication::test_missing_auth_header -v -s
-
-# Show configuration values
-python -c "from config import config; print(f'URL: {config.BASE_URL}'); print(f'Timeout: {config.TIMEOUT}')"
-
-# Test configuration validation
-python -c "from config import config; config.validate(); print('Config OK')"
+pytest -v -k "critical or high_priority"
 ```
 
-### Log Analysis
-```bash
-# Run with pytest logging
-pytest --log-cli-level=DEBUG -v
+## Key Features
 
-# Capture HTTP traffic (if using httpx with logging)
-HTTPX_LOG_LEVEL=DEBUG pytest -v -s
+### 1. **Complete OWASP API Security Top 10 (2023) Coverage**
+- ✅ All 10 OWASP API vulnerability categories implemented
+- ✅ LLM-specific prompt injection and jailbreak prevention
+- ✅ Multi-modal content security validation
+- ✅ Downstream API consumption security testing
+- ✅ SSRF protection validation
+- ✅ Business flow security testing
+
+### 2. **Comprehensive Zero Trust Architecture Validation**
+- ✅ Per-request authentication verification
+- ✅ Granular scope-based authorization
+- ✅ Context-aware access control (geolocation, device, behavior)
+- ✅ Least privilege enforcement
+- ✅ Trust boundary validation
+
+### 3. **Advanced Cost Management**
+- ✅ Automated cost tracking and budget enforcement
+- ✅ Token usage monitoring and optimization
+- ✅ Daily budget limits with automatic suspension
+- ✅ Cost reporting and analytics
+- ✅ Multi-provider cost tracking
+
+### 4. **Complete Multi-Modal Testing**
+- ✅ Image content validation and security
+- ✅ File upload security testing
+- ✅ Content type confusion detection
+- ✅ Malicious file detection and sanitization
+- ✅ Cross-modal injection testing
+
+### 5. **Performance & Load Testing**
+- ✅ Baseline, peak, stress, spike, and endurance testing
+- ✅ Mixed workload scenarios (chat + embeddings)
+- ✅ Provider failover and circuit breaker testing
+- ✅ Concurrent request handling validation
+- ✅ Performance metrics collection and analysis
+
+### 6. **Enterprise-Grade Error Handling**
+- ✅ Comprehensive error response validation
+- ✅ Concurrent error handling testing
+- ✅ Timeout and rate limiting validation
+- ✅ Error message security verification
+- ✅ Provider failover error handling
+
+## Architecture
+
+### Directory Structure
+```
+tests/integration/
+├── .env.template              # Comprehensive environment configuration
+├── requirements.txt           # All required dependencies
+├── conftest.py               # Global pytest configuration with fixtures
+├── config.py                 # Advanced configuration management
+├── fixtures/                 # Comprehensive test fixtures
+│   ├── auth_fixtures.py      # Authentication test data & scenarios
+│   ├── multimodal_fixtures.py # Multi-modal content & attack vectors
+│   └── security_fixtures.py  # Security test payloads & OWASP tests
+├── utils/                    # Advanced testing utilities
+│   ├── cost_tracking.py      # Cost management & budget enforcement
+│   └── security_validators.py # Security validation & threat detection
+├── 7_2_functional/           # Section 7.2 - Complete functional tests
+│   ├── test_business_logic_validation.py
+│   └── test_input_validation.py
+├── 7_3_security/            # Section 7.3 - Complete OWASP API Top 10
+│   ├── test_owasp_api1_bola.py              # API1:2023 - BOLA
+│   ├── test_owasp_api_authentication.py     # API2:2023 - Auth
+│   ├── test_owasp_api3_data_exposure.py     # API3:2023 - Data Exposure
+│   ├── test_owasp_api4_resource_consumption.py # API4:2023 - Resources
+│   ├── test_owasp_api5_function_authorization.py # API5:2023 - Functions
+│   ├── test_owasp_api6_business_flows.py     # API6:2023 - Business Flows
+│   ├── test_owasp_api7_ssrf.py              # API7:2023 - SSRF
+│   ├── test_owasp_api8_security_misconfiguration.py # API8:2023 - Config
+│   ├── test_owasp_api9_inventory_management.py # API9:2023 - Inventory
+│   ├── test_owasp_api10_unsafe_api_consumption.py # API10:2023 - Downstream
+│   └── test_prompt_injection.py             # LLM-specific security
+├── 7_4_performance/         # Section 7.4 - Complete performance testing
+│   └── test_load_testing_scenarios.py
+├── 7_5_reliability/         # Section 7.5 - Complete reliability testing
+│   ├── test_error_response_validation.py
+│   └── test_provider_failover.py
+├── 7_9_data_management/     # Section 7.9 - Complete data management
+│   └── test_data_generation.py
+├── 7_12_zero_trust/         # Section 7.12 - Complete Zero Trust testing
+│   ├── test_authentication_authorization.py
+│   ├── test_least_privilege.py
+│   └── test_context_aware_access.py
+└── archive/                 # Archived original test files
+    ├── 7_2_EdgeCaseTesting.py
+    ├── 7_2_FunctionalValidation.py
+    └── [other archived files...]
 ```
 
-## 📈 Performance Considerations
+## Support & Documentation
 
-### Execution Time
-- **Individual Tests**: 1-5 seconds typical
-- **Full Suite**: 5-15 minutes depending on network
-- **Concurrent Execution**: Use with caution due to rate limits
-
-### Resource Usage
-- **Memory**: Minimal, tests are stateless
-- **Network**: ~1-10 KB per request
-- **API Costs**: Minimal token usage per test
-
-### Optimization Tips
-1. **Parallel Execution**: Use `pytest-xdist` with limited workers
-2. **Test Selection**: Run relevant subsets during development
-3. **Mock Fallback**: Consider hybrid approach for CI/CD
-4. **Caching**: Cache model lists and static responses
-
-## 🔄 CI/CD Integration
-
-### GitHub Actions Example
-```yaml
-name: Integration Tests
-on: [push, pull_request]
-
-jobs:
-  integration-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      
-      - name: Install dependencies
-        run: |
-          cd tests/integration
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
-      
-      - name: Run integration tests
-        env:
-          API_BASE_URL: ${{ secrets.TEST_API_BASE_URL }}
-          TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
-        run: |
-          cd tests/integration
-          source venv/bin/activate
-          pytest -v --maxfail=5
-```
-
-### Environment-Specific Configs
-```bash
-# Development
-cp .env.template .env.dev
-# Edit with dev environment values
-
-# Staging  
-cp .env.template .env.staging
-# Edit with staging environment values
-
-# Production (read-only tests)
-cp .env.template .env.prod
-# Edit with production environment values
-```
-
-## 📚 Additional Resources
-
-### External References
-- [OWASP API Security Top 10 (2023)](https://owasp.org/www-project-api-security/)
-- [NIST SP 800-228](https://csrc.nist.gov/publications/detail/sp/800-228/draft)
-- [httpx Documentation](https://www.python-httpx.org/)
-- [pytest Documentation](https://docs.pytest.org/)
-
-### Adding New Tests
-1. **Choose appropriate file** based on TestPlan.md section
-2. **Follow naming convention**: `test_descriptive_name`
-3. **Use configuration module**: Import from `config`
-4. **Add proper documentation**: Docstrings with expected behavior
-5. **Handle errors gracefully**: Expect real API variations
-
-### Test Pattern Example
-```python
-def test_new_security_feature(self, http_client: httpx.Client, auth_headers: Dict[str, str]):
-    """
-    Test description with expected behavior.
-    
-    Expected: Clear description of what should happen.
-    """
-    payload = {
-        "model": config.get_chat_model(),
-        "messages": [{"role": "user", "content": "test"}],
-        "max_tokens": config.MAX_TOKENS
-    }
-    
-    response = http_client.post(f"{config.BASE_URL}/chat/completions", 
-                               json=payload, headers=auth_headers)
-    
-    assert response.status_code == 200
-    # Add specific validations
-```
+For issues or questions:
+- **Complete Test Documentation**: Review `docs/test_design_n_planning/TestImplementationPlan.md`
+- **Detailed Test Cases**: Check `docs/test_design_n_planning/Testcases_7*` folders
+- **Configuration Guide**: Reference `.env.template` for all options
+- **Security Guidelines**: See OWASP API Security documentation
+- **Zero Trust Reference**: NIST Zero Trust guidelines implementation

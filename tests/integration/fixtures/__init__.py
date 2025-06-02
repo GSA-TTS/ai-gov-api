@@ -1,0 +1,1 @@
+# Fixtures package for GSAi API Testing Framework
