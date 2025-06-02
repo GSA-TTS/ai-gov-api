@@ -1,22 +1,30 @@
+import json
 from functools import singledispatch
-from typing import List, Tuple, Sequence, Optional
+from typing import List, Tuple, Sequence, Optional, Literal, Union, Dict
 
 from ..core.chat_schema import (
     ChatRequest,
     Message,
     AssistantMessage,
     UserMessage,
+    ToolMessage,
     SystemMessage,
     TextPart,
     ImagePart,
-    FilePart
+    FilePart,
+    ToolCall,
+    ToolDefinition
 )
 from ..core.embed_schema import EmbeddingRequest
 
 import app.providers.bedrock.converse_schemas as br 
 from app.providers.bedrock.cohere_embedding_schemas import CohereRequest
 
-AgentMessage = AssistantMessage | UserMessage
+AgentMessage = AssistantMessage | UserMessage | ToolMessage
+
+def convert_core_role(role: Literal['assistant', 'user', 'tool']) -> br.BedrockMessageRole:
+    # Bedrock does not have a 'tool' role. Those should be passed in as 'user'
+    return "assistant" if role == "assistant" else "user"
 
 def extract_system_messages(messages:Sequence[Message]) -> Tuple[Optional[List[SystemMessage]], List[AgentMessage]]:
     system: Optional[Sequence[SystemMessage]]  = []
@@ -30,6 +38,44 @@ def extract_system_messages(messages:Sequence[Message]) -> Tuple[Optional[List[S
         system = None
     return system, other
 
+def tool_def_to_br(td: ToolDefinition) -> br.ToolItem:
+    return br.ToolItem(
+        tool_spec=br.ToolSpecification(
+            name=td.function.name,
+            description=td.function.description,
+            input_schema=br.ToolInputSchema(
+                json=td.function.parameters.model_dump()
+            ),
+        )
+    )
+
+
+def tool_choice_to_br(choice: Union[str, Dict[str, Dict[str, str]]] | None) -> br.ToolChoice | None:
+    if choice is None:
+        return None
+
+    if isinstance(choice, str):
+        match choice:
+            case "auto":
+                return {"auto": {}}
+            case "none":
+                # Not in Bedrock;  omit the field.
+                return None
+            case "required" | "any":
+                return {"any": {}}
+            case _:
+                raise ValueError(f"Unsupported tool_choice string: {choice}")
+    if (
+        choice.get("type") == "function"
+        and isinstance(choice.get("function"), dict)
+        and "name" in choice["function"]
+    ):
+        return {"tool": {"name": choice["function"]["name"]}}
+
+    raise ValueError("Malformed tool_choice object")
+
+
+## Handle various block type conversions
 @singledispatch
 def _part_to_br(part) -> br.ContentBlock:
     raise TypeError(f"No converter for {type(part)}")
@@ -57,14 +103,53 @@ def _(part: FilePart) -> br.ContentDocumentBlock:
         )
     )
 
+@_part_to_br.register
+def _(tc: ToolCall) -> br.ToolUseBlock:
+    return br.ToolUseBlock(
+        tool_use=br.ToolUseBlockContent(
+            tool_use_id=tc.id,
+            name=tc.function.name,
+            input=json.loads(tc.function.arguments),
+        )
+    )
+
+
+@_part_to_br.register
+def _(tm: ToolMessage) -> br.ToolResultBlock:
+    # only text & json supported here; expand as needed
+    content_blocks: list[br.ContentBlock | br.ContentJSONBlock] = []
+    for part in tm.content if isinstance(tm.content, list) else [tm.content]:
+        if isinstance(part, TextPart):
+            content_blocks.append(br.ContentTextBlock(text=part.text))
+        else: # raw string / JSON
+            content_blocks.append(br.ContentJSONBlock(json=part))  
+    return br.ToolResultBlock(
+        tool_result=br.ToolResultBlockContent(
+            tool_use_id=tm.tool_call_id,
+            content=content_blocks,
+        )
+    )
+
 
 def core_to_bedrock(req: ChatRequest) -> br.ConverseRequest:
+    '''
+    The primary conversion routine. It takes a ChatRequest
+    passed in the core format and translates it to a request
+    appropriate to pass to Bedrock's Converse API.
+    '''
     system_messages, messages = extract_system_messages(req.messages)
     if system_messages is not None:
         system_messages = [
             br.SystemContentBlock(text=p.text) 
             for m in system_messages for p in m.content
         ]
+
+    tool_cfg = None
+    if req.tools:
+        tool_cfg = br.ToolConfig(
+            tools=[tool_def_to_br(td) for td in req.tools],
+            tool_choice=tool_choice_to_br(req.tool_choice)
+        )
         
     inference_config = None
     if any(i is not None for i in (req.max_tokens, req.temperature, req.top_p, req.stop)):
@@ -74,18 +159,25 @@ def core_to_bedrock(req: ChatRequest) -> br.ConverseRequest:
             top_p=req.top_p,
             stop_sequences=req.stop
         )
-           
+    
+    br_messages: list[br.Message] = []
+    for m in messages:
+        role = convert_core_role(m.role)
+        if m.role == "assistant" and m.tool_calls:
+            # assistant asking to run a tool
+            blocks = [_part_to_br(tc) for tc in m.tool_calls]
+        elif m.role == "tool":
+            blocks = [_part_to_br(m)] 
+        else:
+            blocks = [_part_to_br(p) for p in m.content]
+        br_messages.append(br.Message(role=role, content=blocks))
+
     return br.ConverseRequest(
         model_id=req.model,
-        messages=[
-            br.Message(
-                role= m.role,
-                content=[_part_to_br(p) for p in m.content],
-            )
-            for m in messages if m.content
-        ],
+        messages=br_messages,
         system=system_messages, 
-        inference_config=inference_config
+        inference_config=inference_config,
+        tool_config=tool_cfg
     )
 
 
