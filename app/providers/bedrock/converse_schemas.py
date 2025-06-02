@@ -64,7 +64,6 @@ class ContentJSONBlock(BaseBedrockModel):
 ## They also have a content list, but it can't be recursive
 ## so we need two unions.
 
-ContentBlock = Union[ContentTextBlock, ContentImageBlock, ContentDocumentBlock]
 
 # For tool use request from the model
 class ToolUseBlockContent(BaseBedrockModel):
@@ -79,11 +78,13 @@ class ToolUseBlock(BaseBedrockModel):
 # For subsequent reuest when passing tool results back to model
 class ToolResultBlockContent(BaseBedrockModel):
     tool_use_id: str 
-    content: List[Union[ContentBlock, ContentJSONBlock]]   
+    content: List[Union["ContentBlock", ContentJSONBlock]]   
     status: Optional[Literal["error"]] = Field(default=None)
 
 class ToolResultBlock(BaseBedrockModel):
     tool_result: ToolResultBlockContent
+
+ContentBlock = Union[ContentTextBlock, ContentImageBlock, ContentDocumentBlock, ToolResultBlock, ToolUseBlock]
 
 # Message Level content can also contain tool blocks:
 MessageContentBlock = Union[ContentBlock, ToolResultBlock, ToolUseBlock]
