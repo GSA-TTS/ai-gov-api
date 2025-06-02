@@ -116,6 +116,7 @@ class ChatRequest(BaseModel):
 class Response(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
+    finish_reason: Optional[Literal["stop", "length", "tool_calls", "content_filter"]] = None
 
     
 class CompletionUsage(BaseModel):

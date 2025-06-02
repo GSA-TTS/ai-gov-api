@@ -16,6 +16,7 @@ def core_chat_response_to_openai(resp: ChatRepsonse) -> OA.ChatCompletionRespons
        choices=[
            OA.ChatCompletionChoice(
                index=idx,
+               finish_reason=c.finish_reason,
                message=OA.ChatCompletionResponseMessage(
                     content=c.content,
                     tool_calls=[_tool_call_to_oa(tc) for tc in c.tool_calls] if c.tool_calls else None

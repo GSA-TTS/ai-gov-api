@@ -7,7 +7,7 @@ passing to Bedrocks's converse() method as well as source types to convert back
 to the output of the public API.
 '''
 
-from typing import Optional, Union, List, Literal, Dict, Any
+from typing import Optional, Union, List, Literal, Dict, Any, Sequence
 
 from pydantic import BaseModel, Field, NonNegativeInt, ConfigDict, RootModel
 from pydantic.alias_generators import to_camel
@@ -86,14 +86,14 @@ class ToolResultBlock(BaseBedrockModel):
     tool_result: ToolResultBlockContent
 
 # Message Level content can also contain tool blocks:
-MessageContentBlock = Union[ContentBlock, ToolResultBlock]
+MessageContentBlock = Union[ContentBlock, ToolResultBlock, ToolUseBlock]
 
 # it's not clear how to deal with OpenAI's other possible roles
 BedrockMessageRole = Literal["user", "assistant"]
 
 class Message(BaseBedrockModel):
     role: BedrockMessageRole
-    content: List[MessageContentBlock]
+    content: Sequence[MessageContentBlock]
 
 class InferenceConfig(BaseBedrockModel):
     max_tokens: Optional[int] = Field(default=None, description="Maximum number of tokens to generate")
@@ -116,7 +116,11 @@ class ToolSpecification(BaseBedrockModel):
 class ToolItem(BaseBedrockModel):
     tool_spec: ToolSpecification
 
-ToolChoice = Union[Literal["auto", "any"], Dict[Literal["tool"], Dict[str, str]]]
+ToolChoice = Union[
+    Dict[Literal["auto"], Dict[str, object]],
+    Dict[Literal["any"],  Dict[str, object]],
+    Dict[Literal["tool"], Dict[Literal["name"], str]],
+]
 class ToolConfig(BaseBedrockModel):
     tools: List[ToolItem]
     tool_choice: Optional[ToolChoice] = None
@@ -127,7 +131,7 @@ class ConverseRequest(BaseBedrockModel):
     messages: List[Message]
     system: Optional[List[SystemContentBlock]] = Field(default=None, description="Optional list of system prompts")
     inference_config: Optional[InferenceConfig] = Field(default=None, serialization_alias="inferenceConfig")
-    tool_config: Optional[ToolConfig] = Field(default=None, alias="toolConfig")
+    tool_config: Optional[ToolConfig] = Field(default=None)
 
 
 class ConverseResponseUsage(BaseBedrockModel):
@@ -163,12 +167,15 @@ class ContentBlockStartDetailsToolUse(BaseBedrockModel):
     tool_use_id: str
     name: str
 
+class StartText(BaseBedrockModel):
+    text: ContentBlockStartDetailsText
+
+class StartToolUse(BaseBedrockModel):
+    tool_use: ContentBlockStartDetailsToolUse
+
 class ContentBlockStartContent(BaseBedrockModel):
     content_block_index: int
-    start: Union[
-        Dict[Literal["text"], ContentBlockStartDetailsText],
-        Dict[Literal["toolUse"], ContentBlockStartDetailsToolUse]
-    ] # The API uses the key ("text" or "toolUse") to discriminate
+    start:  Union[StartText, StartToolUse] # The API uses the key ("text" or "toolUse") to discriminate
 
 
 class ContentBlockDeltaDetailsToolUse(BaseBedrockModel):
