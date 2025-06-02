@@ -217,7 +217,7 @@ def pytest_runtest_logfinish(nodeid, location):
 
 
 @pytest.fixture(scope="function")
-async def make_request():
+def make_request():
     """Helper fixture for making API requests with cost tracking"""
     async def _make_request(client: httpx.AsyncClient, method: str, url: str, 
                            headers: Dict[str, str], data: Dict[str, Any] = None,
