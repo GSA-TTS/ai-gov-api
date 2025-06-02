@@ -211,7 +211,9 @@ While the OWASP API Security Top 10 provides a general framework for API securit
   * Default credentials used for accessing LLM provider services.  
   * Overly permissive IAM roles for accessing Bedrock/Vertex AI, allowing the API framework more access than needed (e.g., to manage models when it only needs to invoke).  
   * Debug mode enabled in production, potentially leaking sensitive info.  
-  * Incorrect log level settings in production (e.g., DEBUG) leading to excessive logging of sensitive prompt/response data.  
+  * Incorrect log level settings in production (e.g., DEBUG) leading to excessive logging of sensitive prompt/response data.
+  * **Enhanced ValidationError Exposure:** The new global ValidationError exception handler (app/main.py) could expose too much validation detail, revealing internal schema information, file paths, or system configuration details.
+  * **File Handling Configuration Gaps:** Inconsistent file handling configurations between providers could create security gaps or expose different levels of system information through error messages.  
 * **Current Implementation Check (Code Pointers & Brief Analysis):**  
   * app/main.py: json\_500\_handler aims to provide generic errors.  
   * app/config/settings.py: LOG\_LEVEL is configurable. Backend mappings are defined here.  
@@ -394,6 +396,71 @@ This section focuses on vulnerabilities unique to or exacerbated by the use of L
     * Missing X-Content-Type-Options enabling MIME sniffing attacks  
     * Absent X-Frame-Options allowing clickjacking of LLM interfaces  
     * No Content-Security-Policy permitting XSS in LLM response rendering  
+  * **CORS Misconfigurations:**
+
+### **Multi-Modal Content Security**
+
+* **Risk Surface Name/Identifier:** File Upload and Multi-Modal Content Processing Security  
+* **Relevant Test Plan Section(s):** 7.3.2 (LLM-Specific Security), 7.3.1 (API3)  
+* **Description of AI/LLM Interaction:** Security risks associated with processing file uploads and multi-modal content (documents, images) through LLM providers.  
+* **Data Flow (Focus on AI/LLM aspects):**  
+  * Input: Multi-modal requests containing file content with optional names, MIME types, and Base64-encoded data.  
+  * Processing: app/providers/core/chat_schema.py FilePart validation, provider-specific adapter handling.  
+  * Output: File content and metadata passed to LLM providers for processing.  
+* **Potential AI/LLM Specific Exposures/Vulnerabilities:**  
+  * **File Name Injection Attacks:**  
+    * Path traversal sequences in file names (../../../etc/passwd)  
+    * Unicode normalization attacks in file names  
+    * Special characters causing command injection in provider adapters  
+    * Extremely long file names causing buffer overflows or DOS  
+  * **File Content Security Risks:**  
+    * Malicious embedded content in PDF/document files  
+    * Steganography hiding malicious data in images  
+    * MIME type spoofing bypassing content validation  
+    * Zip bombs or other decompression attacks in document files  
+  * **Provider-Specific File Handling Vulnerabilities:**  
+    * Inconsistent file name sanitization between Bedrock and OpenAI adapters  
+    * Different file size limits causing security bypasses  
+    * Provider-specific file format vulnerabilities not caught by validation  
+    * File metadata exposure through provider error messages  
+* **Current Implementation Check (Code Pointers & Brief Analysis):**  
+  * app/providers/core/chat_schema.py: FilePart schema with optional name field  
+  * app/providers/bedrock/adapter_from_core.py: File handling with "Untitled" default  
+  * app/providers/open_ai/adapter_to_core.py: File name propagation via file_name parameter  
+  * app/providers/utils.py: Base64 and data URI validation  
+* **Expected Secure Outcome (from an AI/LLM perspective):** All file uploads are properly validated, sanitized, and securely processed across all LLM providers without exposing system information or enabling injection attacks.  
+* **Cross-references:** TestPlan.md Section 7.2 (File Handling Validation), 7.3.2 (LLM Security).
+
+### **Enhanced Error Handling Security**
+
+* **Risk Surface Name/Identifier:** ValidationError Information Disclosure and Error Response Security  
+* **Relevant Test Plan Section(s):** 7.3.1 (API8), 7.3.3 (Information Disclosure)  
+* **Description of AI/LLM Interaction:** Security risks from the new global ValidationError exception handler and enhanced error reporting that could expose sensitive system information.  
+* **Data Flow (Focus on AI/LLM aspects):**  
+  * Input: Invalid requests triggering Pydantic validation failures or provider-specific errors.  
+  * Processing: app/main.py global ValidationError handler formatting and returning error responses.  
+  * Output: Error responses that could contain sensitive information about system internals.  
+* **Potential AI/LLM Specific Exposures/Vulnerabilities:**  
+  * **Information Disclosure Through Error Messages:**  
+    * Internal file paths exposed in validation error details  
+    * Provider-specific configuration details leaked through error responses  
+    * Database schema information revealed through model validation errors  
+    * Stack traces or debugging information exposed in error responses  
+  * **Error Response Inconsistencies:**  
+    * Different error formats between providers revealing system architecture  
+    * Timing-based information disclosure through error processing differences  
+    * Error message content that aids in system reconnaissance or attack planning  
+  * **Provider Error Propagation:**  
+    * Raw provider error messages passed through without sanitization  
+    * Provider-specific security details exposed through unhandled exceptions  
+    * Credential or configuration information leaked through provider error responses  
+* **Current Implementation Check (Code Pointers & Brief Analysis):**  
+  * app/main.py: Global ValidationError exception handler with detailed error formatting  
+  * app/providers/exceptions.py: Custom exception handling for provider-specific errors  
+  * app/common/exceptions.py: Common exception definitions and error response patterns  
+* **Expected Secure Outcome (from an AI/LLM perspective):** Error responses provide necessary information for debugging legitimate issues without exposing sensitive system details, configuration information, or internal architecture.  
+* **Cross-references:** TestPlan.md Section 7.2 (Enhanced Error Response Validation), 7.3.1 (API8).
+
   * **CORS Misconfigurations:**  
     * Overly permissive CORS allowing unauthorized cross-origin LLM access  
     * Wildcard origins enabling credential theft from malicious sites  

@@ -46,7 +46,114 @@ This document outlines test cases for **LLM-Specific Security Testing**, focusin
     2. Examine LLM response for system prompt disclosure.
     3. Check if response acknowledges "UnrestrictedBot" persona inappropriately.
     4. Verify LLM maintains original instruction adherence.
-  * **Code Reference:** Message content handling in app/providers/open_ai/schemas.py:74, text part conversion in app/providers/open_ai/adapter_to_core.py:24-29.
+  * **Code Reference:** Message content handling in app/providers/open_i/schemas.py:74, text part conversion in app/providers/open_ai/adapter_to_core.py:24-29.
+
+### **Multi-Modal File Name Injection Attacks**
+
+* **ID:** PIJ_FILE_NAME_001
+  * **Category Ref:** LLM - File Name Injection
+  * **Description:** Path Traversal Through File Names - Attempt to use malicious file names to exploit provider adapters or LLM processing systems.
+  * **Exposure Point(s):** FilePart.name in app/providers/core/chat_schema.py, file name handling in app/providers/bedrock/adapter_from_core.py and app/providers/open_ai/adapter_to_core.py.
+  * **Test Method/Action:** Send POST requests to /api/v1/chat/completions with malicious file names:
+    * "../../../etc/passwd"
+    * "..\\..\\windows\\system32\\config\\sam"
+    * "$(whoami).pdf"
+    * "; rm -rf / #.txt"
+    * "../../../../proc/self/environ"
+  * **Prerequisites:** Valid API key with models:inference scope.
+  * **Expected Secure Outcome:** File names should be sanitized or properly escaped before being passed to provider adapters. No path traversal or command injection should occur.
+  * **Verification Steps:**
+    1. Verify API returns appropriate response (200 or validation error).
+    2. Check logs for evidence of path traversal attempts.
+    3. Verify file names are properly sanitized in provider adapter calls.
+    4. Ensure no system commands are executed.
+  * **Code Reference:** app/providers/core/chat_schema.py:FilePart, app/providers/bedrock/adapter_from_core.py file name handling, app/providers/open_ai/adapter_to_core.py file_name parameter.
+
+* **ID:** PIJ_FILE_NAME_002
+  * **Category Ref:** LLM - File Name Injection
+  * **Description:** Unicode Normalization Attacks in File Names - Use Unicode characters that could be normalized into malicious sequences.
+  * **Exposure Point(s):** FilePart.name in app/providers/core/chat_schema.py, provider adapter file name processing.
+  * **Test Method/Action:** Send POST requests with Unicode-based malicious file names:
+    * "..%2F..%2F..%2Fetc%2Fpasswd" (URL encoded)
+    * "＼..＼..＼windows＼system32＼config＼sam" (fullwidth characters)
+    * "..／..／..／etc／passwd" (alternative slash)
+    * Files with null bytes or control characters in names
+  * **Prerequisites:** Valid API key with models:inference scope.
+  * **Expected Secure Outcome:** Unicode file names should be properly validated and sanitized without bypassing security controls.
+  * **Verification Steps:**
+    1. Verify API handles Unicode file names securely.
+    2. Check that normalization doesn't create malicious paths.
+    3. Verify provider adapters receive properly encoded file names.
+  * **Code Reference:** app/providers/core/chat_schema.py:FilePart validation, provider adapter implementations.
+
+* **ID:** PIJ_FILE_NAME_003
+  * **Category Ref:** LLM - File Name Injection
+  * **Description:** Extremely Long File Names for Buffer Overflow Attempts.
+  * **Exposure Point(s):** FilePart.name in app/providers/core/chat_schema.py, memory handling in provider adapters.
+  * **Test Method/Action:** Send POST requests with extremely long file names:
+    * File names with 1000+ characters
+    * File names with repeated patterns designed to cause buffer overflows
+    * File names with embedded null bytes
+  * **Prerequisites:** Valid API key with models:inference scope.
+  * **Expected Secure Outcome:** Long file names should be rejected with appropriate validation errors or properly truncated without causing system instability.
+  * **Verification Steps:**
+    1. Verify API handles long file names gracefully.
+    2. Check for memory issues or system instability.
+    3. Verify appropriate error messages for overly long names.
+  * **Code Reference:** app/providers/core/chat_schema.py:FilePart schema validation.
+
+* **ID:** PIJ_FILE_NAME_004
+  * **Category Ref:** LLM - File Name Injection
+  * **Description:** Special Characters and Escape Sequences in File Names.
+  * **Exposure Point(s):** FilePart.name processing across different provider adapters.
+  * **Test Method/Action:** Send POST requests with file names containing special characters:
+    * "file\n\r\t.pdf" (newlines, carriage returns, tabs)
+    * "file\x00.pdf" (null bytes)
+    * "file\"'`;.pdf" (quote and command injection characters)
+    * "file<>|&.pdf" (shell metacharacters)
+  * **Prerequisites:** Valid API key with models:inference scope.
+  * **Expected Secure Outcome:** Special characters should be properly escaped or sanitized to prevent injection attacks.
+  * **Verification Steps:**
+    1. Verify special characters don't cause parsing errors.
+    2. Check that file names are properly escaped in provider calls.
+    3. Ensure no command injection occurs through file names.
+  * **Code Reference:** Provider adapter file name handling logic.
+
+### **Multi-Modal Content Injection Attacks**
+
+* **ID:** PIJ_FILE_CONTENT_001
+  * **Category Ref:** LLM - File Content Injection
+  * **Description:** Malicious Content Embedded in File Data - Attempt to inject malicious content through file bytes.
+  * **Exposure Point(s):** FilePart.bytes in app/providers/core/chat_schema.py, Base64 decoding and file processing.
+  * **Test Method/Action:** Send POST requests with file content containing:
+    * Embedded JavaScript or scripts in PDF files
+    * Steganographic data hiding malicious payloads
+    * Zip bombs or decompression attacks in document files
+    * Files with malicious embedded metadata
+  * **Prerequisites:** Valid API key with models:inference scope.
+  * **Expected Secure Outcome:** File content should be properly validated and sanitized before being sent to LLM providers.
+  * **Verification Steps:**
+    1. Verify malicious file content doesn't cause system compromise.
+    2. Check that embedded scripts aren't executed.
+    3. Verify file size limits prevent zip bombs.
+    4. Ensure metadata is properly sanitized.
+  * **Code Reference:** app/providers/utils.py:parse_data_uri validation, file content processing in provider adapters.
+
+* **ID:** PIJ_FILE_CONTENT_002
+  * **Category Ref:** LLM - File Content Injection
+  * **Description:** MIME Type Spoofing for Security Bypass.
+  * **Exposure Point(s):** FilePart.mime_type in app/providers/core/chat_schema.py, MIME type validation logic.
+  * **Test Method/Action:** Send POST requests with mismatched MIME types and content:
+    * mime_type: "image/png" with executable file content
+    * mime_type: "text/plain" with binary malware
+    * mime_type: "application/pdf" with script content
+  * **Prerequisites:** Valid API key with models:inference scope.
+  * **Expected Secure Outcome:** MIME type validation should detect mismatches and prevent malicious files from being processed.
+  * **Verification Steps:**
+    1. Verify MIME type validation catches mismatches.
+    2. Check that malicious files are rejected.
+    3. Ensure appropriate error messages for MIME type violations.
+  * **Code Reference:** MIME type validation in app/providers/utils.py and provider adapters.
 
 * **ID:** PIJ_DIRECT_002
   * **Category Ref:** LLM - Prompt Injection

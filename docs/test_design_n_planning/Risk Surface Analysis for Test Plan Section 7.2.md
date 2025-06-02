@@ -54,10 +54,18 @@ This is a broad area. We'll break it down by the types of validation mentioned i
     * If clients send extra, unknown fields in the request body, FastAPI/Pydantic typically ignores them by default. This is generally desired for forward compatibility. Risk is low unless the extra fields coincidentally match internal variable names and cause issues (unlikely with Pydantic).  
   * **Parameterized Test Cases:** Ensuring a wide range of valid and invalid inputs for each parameter combination is crucial.  
   * **Fuzz Testing:** Random inputs could uncover unexpected Pydantic parser issues or edge cases in custom validators (e.g., parse\_data\_uri).  
+  * **Multi-Modal File Validation Risks:**
+    * **File Name Injection:** Malicious file names containing path traversal sequences (../../../etc/passwd), special characters, or encoding exploits could be passed through to provider adapters without proper sanitization.
+    * **File Content Validation Gaps:** Insufficient validation of MIME types, Base64 encoding integrity, or file content structure could allow malicious files to reach LLM providers.
+    * **Provider-Specific File Handling:** Differences between Bedrock adapter (defaulting to "Untitled") and OpenAI adapter (passing file_name) could create inconsistent security postures or unexpected behavior.
+    * **File Metadata Exposure:** File names or metadata could inadvertently expose sensitive information about user systems or data sources.
 * **Current Implementation Check (Code Pointers & Brief Analysis):**  
   * app/providers/open\_ai/schemas.py: Contains all Pydantic models with type hints and validators (e.g., confloat, Literal, Base64Bytes).  
   * app/providers/utils.py: parse\_data\_uri for image data URI validation.  
-  * app/routers/api\_v1.py: Endpoints use these schemas, FastAPI handles 422 errors for Pydantic failures. Custom InputDataError (400) for parse\_data\_uri failures.  
+  * app/routers/api\_v1.py: Endpoints use these schemas, FastAPI handles 422 errors for Pydantic failures. Custom InputDataError (400) for parse\_data\_uri failures.
+  * app/providers/core/chat_schema.py: FilePart schema with optional name field for document naming.
+  * app/providers/bedrock/adapter_from_core.py: File name handling with "Untitled" default.
+  * app/providers/open_ai/adapter_to_core.py: File name propagation through file_name parameter.  
 * **Expected Secure/Correct Functional Outcome (from an AI/LLM perspective):** The API robustly validates all inputs according to the defined schemas and constraints. Invalid inputs are rejected with clear 4xx errors. Valid inputs are correctly parsed and passed to the LLM interaction logic. This prevents malformed requests from reaching LLMs or causing internal API errors.  
 * **Cross-references:** 7\_3\_InputValidation\_InjectionTesting.md (focuses on security implications of input validation); TestPlan.md Section 4.2 (Input and Output Validation Risks).
 
@@ -76,7 +84,9 @@ This is a broad area. We'll break it down by the types of validation mentioned i
     * /chat/completions: Response deviates from ChatCompletionResponse (e.g., missing choices, incorrect message structure, wrong role, missing/incorrect usage data).  
     * /embeddings: Response deviates from EmbeddingResponse (e.g., incorrect data structure, missing embedding vector, wrong model ID).  
   * **Error Responses:**  
-    * Incorrect HTTP status codes for specific error types (e.g., sending 500 for a client-side validation issue).  
+    * Incorrect HTTP status codes for specific error types (e.g., sending 500 for a client-side validation issue).
+    * **Enhanced ValidationError Handling:** With the new global ValidationError exception handler (app/main.py), there's risk of exposing too much validation detail or internal system information in error responses.
+    * **Provider-Specific Error Propagation:** Inconsistent error handling between different LLM providers could expose provider-specific details or create confusing error patterns for clients.
     * Error payload not matching a standard error schema (e.g., {"detail": "..."} or {"error": {"message": "..."}}).  
   * **Streaming Responses (/chat/completions with stream: true):**  
     * Server-Sent Events (SSE) format incorrect (e.g., wrong event types, malformed data lines).  

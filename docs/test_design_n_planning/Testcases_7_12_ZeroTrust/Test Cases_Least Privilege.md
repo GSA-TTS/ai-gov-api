@@ -48,6 +48,8 @@ This document outlines test cases for verifying the principle of Least Privilege
 * **Expected Secure Outcome:** Scopes are granular and provide clear separation between inference, embedding, and administrative functions, aligning with the principle of least privilege. No overly broad or ambiguous scopes are defined for general use.
 * **Verification Steps:**
     1.  Confirm scopes like `MODELS_INFERENCE`, `MODELS_EMBEDDING`, `ADMIN` are present.
+    2.  Verify that `ADMIN` scope is not assigned by default in user creation processes.
+    3.  Confirm that scope separation prevents privilege escalation between different LLM operations.
     2.  Assess if these scopes are sufficiently fine-grained for the current functionalities.
     3.  Consider if any combined scopes (e.g., a "read-all-models-and-perform-inference" scope) exist and if they are justified or could be broken down further if needed for more roles.
 
@@ -113,6 +115,49 @@ This document outlines test cases for verifying the principle of Least Privilege
     1.  Connect to PostgreSQL as a database administrator.
     2.  Inspect the grants for the application user (e.g., using `\du <app_user>`, `\dp <app_schema>.*`, `\dt <app_schema>.*`).
     3.  Confirm privileges are limited to necessary DML on application tables.
+
+### **ZTA_LP_ADMIN_001**
+* **ID:** ZTA_LP_ADMIN_001
+* **Category Ref:** Least Privilege - Admin Scope Enhancement
+* **Description:** Verify that admin user creation script no longer assigns excessive default admin scopes, following principle of least privilege.
+* **Exposure Point(s):** `scripts/create_admin_user.py:19-49` admin user creation with scope assignment.
+* **Test Method/Action:** Review the admin user creation script to verify that broad admin scopes are not assigned by default.
+* **Prerequisites:** Access to source code and admin user creation script.
+* **Expected Secure Outcome:** Admin user creation follows principle of least privilege, only assigning necessary scopes based on actual role requirements rather than broad administrative permissions.
+* **Verification Steps:**
+    1. Examine `scripts/create_admin_user.py` scope assignment logic.
+    2. Verify that `Scope.ADMIN` is not included in default scope lists.
+    3. Confirm that admin users are created with specific, justified scopes only.
+    4. Test that created admin users cannot perform operations outside their assigned scopes.
+* **Code Reference:** `scripts/create_admin_user.py:19` scope assignment, `app/auth/schemas.py:10-20` scope definitions.
+
+### **ZTA_LP_ADMIN_002**
+* **ID:** ZTA_LP_ADMIN_002
+* **Category Ref:** Least Privilege - Admin Scope Validation
+* **Description:** Test that existing admin users with broad `ADMIN` scope cannot access functionality beyond their legitimate needs.
+* **Exposure Point(s):** API endpoints protected by `RequiresScope` with `ADMIN` scope checks.
+* **Test Method/Action:** Test admin scope usage against actual administrative functionality requirements.
+* **Prerequisites:** Admin API key with `ADMIN` scope, understanding of legitimate admin operations.
+* **Expected Secure Outcome:** Admin scope should be limited to specific administrative functions and not provide blanket access to all API operations.
+* **Verification Steps:**
+    1. Identify all endpoints that require `ADMIN` scope.
+    2. Verify each admin-scoped operation is justified and necessary.
+    3. Test that admin scope doesn't grant access to regular user operations unnecessarily.
+    4. Validate that admin operations are properly audited and logged.
+
+### **ZTA_LP_ADMIN_003**
+* **ID:** ZTA_LP_ADMIN_003
+* **Category Ref:** Least Privilege - Scope Granularity
+* **Description:** Validate that administrative functions are properly segmented into specific, granular scopes rather than using broad admin privileges.
+* **Exposure Point(s):** Administrative endpoints and scope-based access control implementation.
+* **Test Method/Action:** Analyze administrative functionality to determine if more granular scopes would better implement least privilege.
+* **Prerequisites:** Access to administrative endpoints and scope definitions.
+* **Expected Secure Outcome:** Administrative functions are protected by specific, granular scopes that limit access to only necessary operations.
+* **Verification Steps:**
+    1. Map all administrative operations to their scope requirements.
+    2. Identify opportunities for scope subdivision (e.g., user management vs. API key management).
+    3. Verify that broad admin access is justified for each operation.
+    4. Test access control with more granular scope assignments.
 
 ---
 

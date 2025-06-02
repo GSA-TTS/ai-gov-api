@@ -47,7 +47,35 @@ This document outlines test cases for **API8:2023 \- Security Misconfiguration**
   * **Verification Steps:**  
     1. Trigger a simulated provider error leading to a 500\.  
     2. Inspect the HTTP response body.  
-    3. Check server logs for the detailed error (which is appropriate for server-side logs) and correlate with request\_id.  
+    3. Check server logs for the detailed error (which is appropriate for server-side logs) and correlate with request\_id.
+
+* **ID:** SMISC_VALIDATION_ERROR_001  
+  * **Category Ref:** API8:2023 - Security Misconfiguration  
+  * **Description:** Verify that the new global ValidationError exception handler doesn't expose sensitive system information in error responses.  
+  * **Exposure Point(s):** Global ValidationError handler in app/main.py, Pydantic validation error formatting.  
+  * **Test Method/Action:** Send requests with various validation errors (invalid types, constraints, file validation failures) and analyze error response content.  
+  * **Prerequisites:** Valid API key with appropriate scope.  
+  * **Expected Secure Outcome:** ValidationError responses provide helpful debugging information without exposing internal file paths, system configuration, or application structure details.  
+  * **Verification Steps:**  
+    1. Trigger various Pydantic validation errors across different endpoints.  
+    2. Verify error responses don't contain file paths starting with "/app/" or similar.  
+    3. Check that error messages don't expose internal class names or system details.  
+    4. Ensure no stack traces or debugging information is included.  
+  * **Code Reference:** Global ValidationError handler in app/main.py.
+
+* **ID:** SMISC_FILE_HANDLING_CONFIG_001  
+  * **Category Ref:** API8:2023 - Security Misconfiguration  
+  * **Description:** Verify that file handling configurations don't expose system information through error messages or processing details.  
+  * **Exposure Point(s):** File processing error messages, provider adapter file handling configurations.  
+  * **Test Method/Action:** Send requests with invalid file content and malformed file names to test error message content.  
+  * **Prerequisites:** Valid API key with models:inference scope.  
+  * **Expected Secure Outcome:** File processing errors provide appropriate feedback without exposing file system paths, processing internals, or provider-specific implementation details.  
+  * **Verification Steps:**  
+    1. Test file processing with various malformed inputs.  
+    2. Verify error messages don't expose temporary file paths or processing directories.  
+    3. Check that provider-specific file handling differences don't leak implementation details.  
+    4. Ensure consistent error format regardless of file processing backend.  
+  * **Code Reference:** app/providers/utils.py file processing, provider adapter file handling.
   * **Code Reference:** json_500_handler in app/main.py:84-99, response content at lines 95-98, request_id_ctx usage.  
 * **ID:** SMISC\_CORS\_POLICY\_001  
   * **Category Ref:** API8:2023 \- Security Misconfiguration  

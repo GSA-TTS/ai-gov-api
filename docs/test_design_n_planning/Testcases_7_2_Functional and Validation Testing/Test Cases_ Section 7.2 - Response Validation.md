@@ -52,6 +52,41 @@ This document outlines test cases for API Response Structure & Content Validatio
     * Assert message is an object adhering to ChatCompletionResponseMessage schema:  
       * Assert role is "assistant".  
       * Assert content is a string.  
+      * Verify content doesn't contain unexpected file processing artifacts.  
+    * Assert finish_reason is one of: "stop", "length", "tool_calls", or null.  
+  * Assert usage object contains prompt_tokens, completion_tokens, and total_tokens (all integers).  
+  * Verify usage accurately reflects multi-modal content processing when applicable.  
+* **Code Reference:** app/providers/open_ai/schemas.py:ChatCompletionResponse schema.
+
+### **FV_RESP_CHAT_MULTIMODAL_001**
+
+* **Category Ref:** FV_RESP_STRUCT  
+* **Description:** Validate response structure for multi-modal chat completion requests with file content.  
+* **Exposure Point(s):** /chat/completions endpoint response with multi-modal input.  
+* **Test Method/Action:** Make a POST request to /chat/completions with content containing file parts (text + file).  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** Response structure matches ChatCompletionResponse schema regardless of multi-modal input.  
+* **Verification Steps:**  
+  * Assert HTTP status code is 200.  
+  * Assert response schema matches standard ChatCompletionResponse.  
+  * Verify usage tokens account for multi-modal content processing.  
+  * Assert response content appropriately references file content when relevant.  
+* **Code Reference:** app/providers/core/chat_schema.py:FilePart handling, provider adapter responses.
+
+### **FV_RESP_CHAT_FILE_NAME_001**
+
+* **Category Ref:** FV_RESP_CONTENT  
+* **Description:** Validate that file names are properly handled and don't appear in unexpected response locations.  
+* **Exposure Point(s):** /chat/completions response content with file name references.  
+* **Test Method/Action:** Make a POST request with named file content and analyze response for file name handling.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** File names are appropriately referenced in responses without exposing system information.  
+* **Verification Steps:**  
+  * Verify file names don't appear as system paths in responses.  
+  * Check that provider adapters properly handle file name context.  
+  * Ensure file name references are contextually appropriate.  
+  * Verify no file processing internals are exposed.  
+* **Code Reference:** Provider adapter file name handling in responses.
     * Assert finish\_reason is "stop" (default value) or null.  
   * Assert usage is an object adhering to ChatCompletionUsage schema:  
     * Assert prompt\_tokens is a non-negative integer.  
@@ -205,6 +240,21 @@ This document outlines test cases for API Response Structure & Content Validatio
     * Assert usage.completion\_tokens is plausible for the full streamed content.  
     * Assert usage.total\_tokens \== usage.prompt\_tokens \+ usage.completion\_tokens.  
   * If not present in stream, this test might be N/A or require alternative verification (e.g. client-side calculation).
+
+### **FV_RESP_USAGE_MULTIMODAL_001**
+
+* **Category Ref:** FV_RESP_USAGE  
+* **Description:** Validate usage metrics for multi-modal requests with file content.  
+* **Exposure Point(s):** usage field in /chat/completions response with multi-modal input.  
+* **Test Method/Action:** Make a POST request with content containing both text and file parts.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** Usage metrics accurately account for both text and file content processing.  
+* **Verification Steps:**  
+  * Assert usage.prompt_tokens includes tokens for both text and file content.  
+  * Verify token counts are higher than text-only equivalent requests.  
+  * Assert usage.total_tokens == usage.prompt_tokens + usage.completion_tokens.  
+  * Check that file processing is properly reflected in billing metrics.  
+* **Code Reference:** Provider adapter token calculation for multi-modal content.
 
 ## **5\. Response Content Validation (Basic Semantic Checks)**
 

@@ -83,7 +83,18 @@ This test plan covers the following API versions and endpoints:
     "messages": [
       {
         "role": "system" | "user" | "assistant",
-        "content": "string" | ["array of content parts"]
+        "content": "string" | [
+          {
+            "type": "text",
+            "text": "string"
+          },
+          {
+            "type": "file",
+            "mime_type": "string",
+            "name": "string (optional)",
+            "bytes": "base64_encoded_content"
+          }
+        ]
       }
     ],
     "temperature": number | null,
@@ -120,7 +131,11 @@ This test plan covers the following API versions and endpoints:
   }
   ```
 * **Error Responses:**
-  * `422` - Validation Error (invalid request schema)
+  * `422` - Validation Error (invalid request schema, file validation failures)
+  * `400` - Bad Request (invalid model, malformed content)
+  * `401` - Unauthorized (invalid API key)
+  * `429` - Rate Limit Exceeded
+  * `500` - Internal Server Error
 
 #### **3. Embeddings Endpoint**  
 * **Method:** `POST`
@@ -597,6 +612,34 @@ This section details the comprehensive testing methodology for the GSAi API, emp
     * Finish reason mapping
     * Error code standardization
     * Comprehensive test matrices for cross-provider compatibility
+  * **File Handling Validation:**
+    * **File Name Validation:** Test file name sanitization and validation across providers
+      * Valid file names with common extensions (.pdf, .txt, .docx)
+      * File names with special characters, Unicode, and path separators
+      * Extremely long file names testing length limits
+      * File names with potentially malicious patterns (../../../etc/passwd)
+      * Empty or null file names (should default to "Untitled")
+    * **File Content Validation:** 
+      * MIME type validation and enforcement
+      * Base64 encoding validation and error handling
+      * File size limits and rejection of oversized files
+      * Malformed file content handling
+    * **Provider-Specific File Handling:**
+      * Bedrock adapter file name propagation (defaults to "Untitled")
+      * OpenAI adapter file_name parameter passing
+      * Consistent file metadata handling across providers
+      * File naming consistency in multi-modal requests
+  * **Enhanced Error Response Validation:**
+    * **ValidationError Handling:** Test new global ValidationError exception handler
+      * Pydantic validation error formatting and structure
+      * Error message content validation (no internal details exposed)
+      * Consistent error response format across endpoints
+      * Provider-specific constraint violation error handling
+    * **Error Information Security:** Ensure error responses don't leak:
+      * Internal file paths or system information
+      * Stack traces or debugging information
+      * Provider-specific error details that could aid attackers
+      * Sensitive configuration or credential information
   * **Feature Parity:** Document and test provider-specific limitations:
     * Streaming support availability
     * Maximum context window sizes
@@ -651,8 +694,9 @@ A comprehensive security testing strategy is critical, aligned with OWASP API Se
   * *Note: For functional authentication flow testing (correct error codes, proper token validation), see Section 7.2*
   * **API Key Security Testing:**
     * Key entropy validation (minimum 256 bits)
-    * Secure storage verification (bcrypt/scrypt hashing)
+    * Secure storage verification (SHA256 hashing with secure comparison)
     * Key rotation and revocation immediate effect
+    * **Least Privilege Validation:** Verify removal of excessive admin scopes from default user creation (scripts/create_admin_user.py enhancement)
   * **Authentication Bypass Attempts:**
     * Missing Authorization header
     * Malformed Bearer tokens

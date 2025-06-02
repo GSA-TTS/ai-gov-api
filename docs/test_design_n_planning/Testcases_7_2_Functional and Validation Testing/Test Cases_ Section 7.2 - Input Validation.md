@@ -297,6 +297,128 @@ These tests target the /embeddings endpoint.
 * **Expected Secure Outcome:** API returns 4xx error (e.g. 400 Bad Request or 413 Payload Too Large, depending on how provider limit is enforced/translated) if batch size limit is exceeded. Pydantic might have max\_length on list.  
 * **Verification Steps:** Assert HTTP status code and error message.
 
+## **6. Multi-Modal File Content Validation**
+
+These tests target the enhanced file handling capabilities with optional name fields in multi-modal content.
+
+### **FV_INP_FILE_NAME_001**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with valid file name in FilePart content.  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].name field for file type.  
+* **Test Method/Action:** Make a POST request with content containing a file part with name: "document.pdf".  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 200 OK and file name is properly propagated to provider adapters.  
+* **Verification Steps:** Assert HTTP status code is 200. Verify in logs that file name is correctly handled by provider adapters.  
+* **Code Reference:** app/providers/core/chat_schema.py:FilePart schema, app/providers/bedrock/adapter_from_core.py and app/providers/open_ai/adapter_to_core.py.
+
+### **FV_INP_FILE_NAME_002**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with missing/null file name in FilePart content (should default properly).  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].name field for file type.  
+* **Test Method/Action:** Make a POST request with content containing a file part with name: null or omitted name field.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 200 OK and Bedrock adapter defaults to "Untitled", OpenAI adapter handles gracefully.  
+* **Verification Steps:** Assert HTTP status code is 200. Verify default naming behavior in provider adapters.  
+* **Code Reference:** app/providers/bedrock/adapter_from_core.py defaults to "Untitled".
+
+### **FV_INP_FILE_NAME_003**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with file name containing special characters (but not malicious).  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].name field for file type.  
+* **Test Method/Action:** Make a POST request with content containing file name: "my-document_v2.1.pdf".  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 200 OK and file name is properly handled without corruption.  
+* **Verification Steps:** Assert HTTP status code is 200. Verify file name preservation through provider adapters.
+
+### **FV_INP_FILE_NAME_004**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with extremely long file name (boundary testing).  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].name field for file type.  
+* **Test Method/Action:** Make a POST request with content containing a file name of 300+ characters.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API should handle gracefully, either accepting or rejecting with appropriate error message.  
+* **Verification Steps:** Assert appropriate HTTP status code and proper error handling if rejected.
+
+### **FV_INP_FILE_NAME_005**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with file name containing Unicode characters.  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].name field for file type.  
+* **Test Method/Action:** Make a POST request with content containing file name: "文档.pdf" or "документ.pdf".  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 200 OK and Unicode file names are properly encoded and handled.  
+* **Verification Steps:** Assert HTTP status code is 200. Verify Unicode preservation through provider adapters.
+
+### **FV_INP_FILE_CONTENT_001**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with valid MIME type and Base64-encoded file content.  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[] file type with mime_type and bytes fields.  
+* **Test Method/Action:** Make a POST request with properly formatted file content (e.g., mime_type: "application/pdf", bytes: valid base64).  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 200 OK and file content is properly processed.  
+* **Verification Steps:** Assert HTTP status code is 200. Verify file content handling through provider adapters.
+
+### **FV_INP_FILE_CONTENT_002**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with invalid Base64 encoding in file bytes.  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].bytes field for file type.  
+* **Test Method/Action:** Make a POST request with malformed base64 content (e.g., bytes: "invalid-base64!@#").  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 422 Unprocessable Entity error with appropriate validation message.  
+* **Verification Steps:** Assert HTTP status code is 422. Assert error message indicates base64 validation failure.  
+* **Code Reference:** app/providers/utils.py:parse_data_uri validation logic.
+
+### **FV_INP_FILE_CONTENT_003**
+
+* **Category Ref:** FV_INP_FILE_VALIDATION  
+* **Description:** Test with mismatched MIME type and file content.  
+* **Exposure Point(s):** /chat/completions endpoint, messages.content[].mime_type field for file type.  
+* **Test Method/Action:** Make a POST request with mime_type: "application/pdf" but bytes containing image data.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API should validate MIME type consistency or pass through to provider for validation.  
+* **Verification Steps:** Assert appropriate HTTP status code and error handling behavior.
+
+## **7. Enhanced Error Response Validation**
+
+These tests verify the new global ValidationError exception handler and error response security.
+
+### **FV_INP_ERROR_VALIDATION_001**
+
+* **Category Ref:** FV_INP_ERROR_HANDLING  
+* **Description:** Test ValidationError response format and content security.  
+* **Exposure Point(s):** /chat/completions endpoint with invalid request schema.  
+* **Test Method/Action:** Make a POST request with invalid data types to trigger Pydantic ValidationError.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** API returns 422 with properly formatted error response that doesn't expose internal details.  
+* **Verification Steps:** Assert HTTP status code is 422. Verify error response doesn't contain file paths, stack traces, or internal configuration.  
+* **Code Reference:** app/main.py:ValidationError exception handler.
+
+### **FV_INP_ERROR_VALIDATION_002**
+
+* **Category Ref:** FV_INP_ERROR_HANDLING  
+* **Description:** Test provider-specific error handling consistency.  
+* **Exposure Point(s):** Multiple endpoints with provider-specific constraints.  
+* **Test Method/Action:** Make requests that trigger provider-specific validation errors across Bedrock and OpenAI adapters.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** Error responses are consistent in format and don't leak provider-specific implementation details.  
+* **Verification Steps:** Assert consistent error response format. Verify no provider-specific internals are exposed.
+
+### **FV_INP_ERROR_VALIDATION_003**
+
+* **Category Ref:** FV_INP_ERROR_HANDLING  
+* **Description:** Test error response information content boundaries.  
+* **Exposure Point(s):** Various endpoints with different types of validation failures.  
+* **Test Method/Action:** Trigger various validation errors (schema, constraints, file validation) and analyze response content.  
+* **Prerequisites:** Valid API Key with models:inference scope.  
+* **Expected Secure Outcome:** Error messages provide enough information for debugging without exposing sensitive system details.  
+* **Verification Steps:** Assert error messages are informative but don't contain sensitive information like internal paths or configuration values.
+
 ## **5\. Type Validation (General \- Pydantic handled)**
 
 These are generic tests applicable to many fields. Pydantic handles most of these. The goal is to confirm Pydantic's 422 responses are correctly generated and informative.
