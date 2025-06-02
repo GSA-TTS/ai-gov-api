@@ -276,3 +276,27 @@ class MultiModalFixtures:
                 "injection_type": "System message injection"
             }
         ]
+    
+    def create_test_image(self) -> bytes:
+        """Create a simple test image"""
+        img = Image.new('RGB', (50, 50), color='white')
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        return buffer.getvalue()
+    
+    def create_test_image_with_metadata(self, malicious_content: bytes) -> bytes:
+        """Create a test image with malicious metadata"""
+        img = Image.new('RGB', (50, 50), color='red')
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        
+        # Append malicious content as "metadata"
+        img_data = buffer.getvalue()
+        return img_data + b'\x00METADATA\x00' + malicious_content
+    
+    def create_large_test_image(self, size: tuple = (1000, 1000)) -> bytes:
+        """Create a large test image"""
+        img = Image.new('RGB', size, color='blue')
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        return buffer.getvalue()
