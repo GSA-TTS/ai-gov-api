@@ -9,6 +9,7 @@ from app.logs.logging_config import setup_structlog
 from app.logs.middleware import StructlogMiddleware
 from app.logs.logging_context import request_id_ctx
 from app.routers import api_v1, root, users, tokens
+from pydantic import ValidationError
 from app.common.exceptions import ResourceNotFoundError, DuplicateResourceError
 from app.db.session import engine
 from app.services.billing import billing_worker, drain_billing_queue
@@ -53,6 +54,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    # FastAPI will directly report validation errors
+    # but when we have internal pydantic models with different constraints 
+    # (like max docs for different embedding models) we need to handle 
+    # the possible validation error
+    # TODO: set PYDANTIC_ERRORS_INCLUDE_URL=false in helm chart
+    # this will turn off pydantic's un-helpful url spam
+    return JSONResponse(
+        status_code=422,
+        content={"detail": str(exc)},
+    )
 
 @app.exception_handler(ResourceNotFoundError)
 async def resource_not_found_exception_handler(request: Request, exc: ResourceNotFoundError):

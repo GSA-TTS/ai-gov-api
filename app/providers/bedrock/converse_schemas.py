@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field, NonNegativeInt, ConfigDict, RootModel
 from pydantic.alias_generators import to_camel
 
 
-
 class ImageSource(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     # alias because pydantic does not allow python types as properties
@@ -128,16 +127,12 @@ class ContentBlockStartContent(BaseModel):
     ] # The API uses the key ("text" or "toolUse") to discriminate
 
 
-
-
 class ContentBlockDeltaDetailsToolUse(BaseModel):
     input: str # Tool input is typically a JSON string here
-
 
 class ContentBlockDeltaContent(BaseModel):
     content_block_index: int = Field(alias="contentBlockIndex")
     delta: ContentTextBlock
-
 
 class ContentBlockStopContent(BaseModel):
     content_block_index: int = Field(alias="contentBlockIndex")
@@ -147,7 +142,6 @@ class MessageStopContent(BaseModel):
     additional_model_response_fields: Optional[Dict[str, Any]] = Field(
         default=None, alias="additionalModelResponseFields"
     )
-
 
 class Metrics(BaseModel):
     latency_ms: Optional[int] = Field(default=None, alias="latencyMs")
