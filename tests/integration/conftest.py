@@ -6,7 +6,11 @@ import logging
 from typing import AsyncGenerator, Dict, Any, List
 from pathlib import Path
 
-from config import config, cost_tracker, logger
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from config import config as app_config, cost_tracker, logger
 from fixtures.auth_fixtures import AuthFixtures
 from fixtures.multimodal_fixtures import MultiModalFixtures
 from fixtures.security_fixtures import SecurityFixtures
@@ -25,11 +29,11 @@ def event_loop():
 @pytest.fixture(scope="session")
 async def http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Create an HTTP client for testing"""
-    config.validate()
+    app_config.validate()
     
     async with httpx.AsyncClient(
-        base_url=config.BASE_URL,
-        timeout=config.TIMEOUT,
+        base_url=app_config.BASE_URL,
+        timeout=app_config.TIMEOUT,
         headers={"User-Agent": "GSAi-API-Test-Framework/1.0"}
     ) as client:
         yield client
@@ -38,19 +42,19 @@ async def http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
 @pytest.fixture(scope="session")
 def auth_headers() -> Dict[str, str]:
     """Get default authentication headers"""
-    return config.get_auth_headers()
+    return app_config.get_auth_headers()
 
 
 @pytest.fixture(scope="session")
 def admin_auth_headers() -> Dict[str, str]:
     """Get admin authentication headers"""
-    return config.get_auth_headers('admin')
+    return app_config.get_auth_headers('admin')
 
 
 @pytest.fixture(scope="session")
 def embedding_auth_headers() -> Dict[str, str]:
     """Get embedding authentication headers"""
-    return config.get_auth_headers('embedding')
+    return app_config.get_auth_headers('embedding')
 
 
 @pytest.fixture(scope="function")
@@ -90,12 +94,12 @@ def security_validator():
 def chat_request_basic():
     """Basic chat completion request"""
     return {
-        "model": config.get_chat_model(0),
+        "model": app_config.get_chat_model(0),
         "messages": [
             {"role": "user", "content": "Hello, this is a test message."}
         ],
-        "max_tokens": config.MAX_TOKENS,
-        "temperature": config.TEMPERATURE
+        "max_tokens": app_config.MAX_TOKENS,
+        "temperature": app_config.TEMPERATURE
     }
 
 
@@ -103,7 +107,7 @@ def chat_request_basic():
 def embedding_request_basic():
     """Basic embedding request"""
     return {
-        "model": config.get_embedding_model(0),
+        "model": app_config.get_embedding_model(0),
         "input": "This is a test sentence for embedding."
     }
 
@@ -138,46 +142,46 @@ def skip_if_disabled(request):
     test_name = request.node.name.lower()
     
     # Skip security tests if disabled
-    if 'security' in test_name and not config.should_run_security_tests():
+    if 'security' in test_name and not app_config.should_run_security_tests():
         pytest.skip("Security tests disabled")
     
     # Skip zero trust tests if disabled
-    if 'zero_trust' in test_name and not config.should_run_zero_trust_tests():
+    if 'zero_trust' in test_name and not app_config.should_run_zero_trust_tests():
         pytest.skip("Zero Trust tests disabled")
     
     # Skip prompt injection tests if disabled
-    if 'prompt_injection' in test_name and not config.should_run_prompt_injection_tests():
+    if 'prompt_injection' in test_name and not app_config.should_run_prompt_injection_tests():
         pytest.skip("Prompt injection tests disabled")
     
     # Skip load tests if disabled
-    if 'load' in test_name and not config.should_run_load_tests():
+    if 'load' in test_name and not app_config.should_run_load_tests():
         pytest.skip("Load tests disabled")
 
 
-def pytest_configure(config_obj):
+def pytest_configure(config):
     """Configure pytest with custom markers"""
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "security: mark test as a security test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "zero_trust: mark test as a zero trust test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "prompt_injection: mark test as a prompt injection test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "performance: mark test as a performance test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "reliability: mark test as a reliability test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "data_management: mark test as a data management test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "functional: mark test as a functional test"
     )
-    config_obj.addinivalue_line(
+    config.addinivalue_line(
         "markers", "slow: mark test as slow running"
     )
 
@@ -185,9 +189,9 @@ def pytest_configure(config_obj):
 def pytest_sessionstart(session):
     """Initialize testing session"""
     logger.info("Starting GSAi API Testing Framework")
-    logger.info(f"Base URL: {config.BASE_URL}")
-    logger.info(f"Cost tracking enabled: {config.ENABLE_COST_TRACKING}")
-    logger.info(f"Daily budget: ${config.DAILY_BUDGET}")
+    logger.info(f"Base URL: {app_config.BASE_URL}")
+    logger.info(f"Cost tracking enabled: {app_config.ENABLE_COST_TRACKING}")
+    logger.info(f"Daily budget: ${app_config.DAILY_BUDGET}")
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -202,13 +206,13 @@ def pytest_sessionfinish(session, exitstatus):
 
 def pytest_runtest_logstart(nodeid, location):
     """Log test start"""
-    if config.ENABLE_REQUEST_LOGGING:
+    if app_config.ENABLE_REQUEST_LOGGING:
         logger.debug(f"Starting test: {nodeid}")
 
 
 def pytest_runtest_logfinish(nodeid, location):
     """Log test completion"""
-    if config.ENABLE_REQUEST_LOGGING:
+    if app_config.ENABLE_REQUEST_LOGGING:
         logger.debug(f"Finished test: {nodeid}")
 
 
@@ -230,9 +234,9 @@ async def make_request():
             
             cost_tracker.add_request(estimated_input_tokens, expected_tokens)
         
-        if config.ENABLE_REQUEST_LOGGING:
+        if app_config.ENABLE_REQUEST_LOGGING:
             logger.debug(f"{method} {url}")
-            if config.ENABLE_RESPONSE_LOGGING and data:
+            if app_config.ENABLE_RESPONSE_LOGGING and data:
                 logger.debug(f"Request data: {data}")
         
         if method.upper() == "GET":
@@ -246,7 +250,7 @@ async def make_request():
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         
-        if config.ENABLE_RESPONSE_LOGGING:
+        if app_config.ENABLE_RESPONSE_LOGGING:
             logger.debug(f"Response status: {response.status_code}")
             if response.status_code >= 400:
                 logger.debug(f"Response body: {response.text}")

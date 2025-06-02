@@ -1,7 +1,12 @@
 # Authentication Fixtures for GSAi API Testing Framework
 import secrets
 import string
+import sys
 from typing import Dict, List, Any
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from config import config
 
 

@@ -8,7 +8,7 @@ import time
 from typing import Dict, Any, List
 from unittest.mock import patch
 
-from config import config, logger
+from ..config import config, logger
 
 
 class TestProviderFailover:

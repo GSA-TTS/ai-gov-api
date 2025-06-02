@@ -7,7 +7,7 @@ import asyncio
 import time
 from typing import Dict, Any, List
 
-from config import config, logger
+from ..config import config, logger
 
 
 class TestOWASPAPI4ResourceConsumption:

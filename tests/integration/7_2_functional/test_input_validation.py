@@ -5,8 +5,8 @@ import pytest
 import httpx
 from typing import Dict, Any, List
 
-from config import config, logger
-from fixtures.multimodal_fixtures import MultiModalFixtures
+from ..config import config, logger
+from ..fixtures.multimodal_fixtures import MultiModalFixtures
 
 
 class TestInputValidation:

@@ -6,7 +6,7 @@ import httpx
 import json
 from typing import Dict, Any, List
 
-from config import config, logger
+from ..config import config, logger
 
 
 class TestOWASPAPI10UnsafeAPIConsumption:

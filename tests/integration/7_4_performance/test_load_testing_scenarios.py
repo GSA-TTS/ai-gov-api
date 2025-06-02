@@ -9,7 +9,7 @@ import statistics
 from typing import Dict, Any, List
 from dataclasses import dataclass
 
-from config import config, logger
+from ..config import config, logger
 
 
 @dataclass

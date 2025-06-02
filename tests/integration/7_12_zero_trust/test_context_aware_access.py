@@ -7,7 +7,7 @@ import time
 import datetime
 from typing import Dict, Any, List
 
-from config import config, logger
+from ..config import config, logger
 
 
 class TestZeroTrustContextAwareAccess:

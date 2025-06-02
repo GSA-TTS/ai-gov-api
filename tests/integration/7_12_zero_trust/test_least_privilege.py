@@ -5,8 +5,8 @@ import pytest
 import httpx
 from typing import Dict, Any, List
 
-from config import config, logger
-from fixtures.auth_fixtures import AuthFixtures
+from ..config import config, logger
+from ..fixtures.auth_fixtures import AuthFixtures
 
 
 class TestZeroTrustLeastPrivilege:

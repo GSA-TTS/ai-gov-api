@@ -6,8 +6,8 @@ import httpx
 import asyncio
 from typing import Dict, Any, List
 
-from config import config, logger
-from utils.security_validators import SecurityValidator
+from ..config import config, logger
+from ..utils.security_validators import SecurityValidator
 
 
 class TestErrorResponseValidation:

@@ -5,7 +5,7 @@ import pytest
 import httpx
 from typing import Dict, Any, List
 
-from config import config, logger
+from ..config import config, logger
 
 
 class TestOWASPAPI8SecurityMisconfiguration:
