@@ -8,7 +8,13 @@ from app.providers.core.chat_schema import (
     TextPart,
     ChatRepsonse,
     Response,
-    CompletionUsage
+    CompletionUsage,
+    ToolCall,
+    ToolDefinition,
+    FunctionObject,
+    ToolMessage,
+    FunctionParameters,
+    FunctionCall
 )
 from app.providers.core.embed_schema import EmbeddingRequest, EmbeddingResponse, EmbeddingData, EmbeddingUsage
 
@@ -23,21 +29,55 @@ def core_chat_request():
     )
 
 @pytest.fixture
-def core_full_chat_request():
+def core_full_chat_request() -> ChatRequest:
+    weather_params = FunctionParameters(
+        properties={
+            "location": {"type": "string", "description": "City name"}
+        },
+        required=["location"]
+    )
+    weather_def = ToolDefinition(
+        function=FunctionObject(
+            name="get_weather",
+            description="Get the current weather in a city",
+            parameters=weather_params,
+        )
+    )
+
     return ChatRequest(
         model="test-model",
-        messages = [
-            SystemMessage(content=[TextPart(text="Speak Pirate!")]),
-            UserMessage(content=[TextPart(text="Hello!")]),
-            AssistantMessage(content=[TextPart(text="Hello! How can I assist you?")])
-        ],
         temperature=1.0,
         top_p=.5,
         max_tokens=1000,
         stream=True,
-        stop=["stop", "STOP"]
-
+        stop=["stop", "STOP"],
+        tools=[weather_def],
+        tool_choice="auto",
+        messages=[
+            SystemMessage(content=[TextPart(text="Speak Pirate!")]),
+            UserMessage(content=[TextPart(text="Hello!")]),
+            # assistant requests the tool
+            AssistantMessage(
+                content=[],
+                tool_calls=[
+                    ToolCall(
+                        id="call_1",
+                        function=FunctionCall(
+                            name="get_weather",
+                            arguments='{"location":"Boston"}'
+                        )
+                    )
+                ],
+            ),
+            # tool replies
+            ToolMessage(
+                tool_call_id="call_1",
+                content=[TextPart(type='text', text='Arrr! ’Tis 55 degrees and clear in Boston.')],
+            ),
+        ],
     )
+
+
 
 @pytest.fixture
 def core_chat_reponse():

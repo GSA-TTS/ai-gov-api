@@ -1,10 +1,13 @@
 import structlog 
 
-from ..core.chat_schema import ChatRepsonse, StreamResponse
+from ..core.chat_schema import ChatRepsonse, StreamResponse, ToolCall
 from ..core.embed_schema import EmbeddingResponse as Core_EmbeddingResponse
 import app.providers.open_ai.schemas as OA
 
 log = structlog.get_logger()
+
+def _tool_call_to_oa(tc: ToolCall) -> OA.ToolCall:
+    return OA.ToolCall.model_validate(tc.model_dump())
 
 def core_chat_response_to_openai(resp: ChatRepsonse) -> OA.ChatCompletionResponse:
     return OA.ChatCompletionResponse(
@@ -13,7 +16,10 @@ def core_chat_response_to_openai(resp: ChatRepsonse) -> OA.ChatCompletionRespons
        choices=[
            OA.ChatCompletionChoice(
                index=idx,
-               message=OA.ChatCompletionResponseMessage(content=c.content)
+               message=OA.ChatCompletionResponseMessage(
+                    content=c.content,
+                    tool_calls=[_tool_call_to_oa(tc) for tc in c.tool_calls] if c.tool_calls else None
+                )
            ) for idx, c in enumerate(resp.choices)
        ],
        usage=OA.ChatCompletionUsage.model_validate(resp.usage, from_attributes=True)
