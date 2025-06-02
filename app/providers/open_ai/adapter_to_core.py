@@ -1,18 +1,18 @@
 from typing import List, cast, Sequence, Optional
 from functools import singledispatch
 from ..core.chat_schema import (
+    AssistantMessage,
     ChatRequest,
     ContentPart,
+    FilePart,
+    ImagePart,
     Message,
     SystemMessage,
-    AssistantMessage,
-    UserMessage,
-    TextPart,
-    ImagePart,
-    FilePart,
     ToolCall,
+    ToolDefinition,
     ToolMessage,
-    ToolDefinition
+    TextPart,
+    UserMessage,
 )
 from ..core.embed_schema import EmbeddingRequest
 import app.providers.open_ai.schemas as OA 
