@@ -22,6 +22,11 @@ log = structlog.get_logger()
 
 router = APIRouter()
 
+# Pull these out to make it easier
+# to everride in tests
+chat_backend = Backend('chat')
+embedding_backend = Backend('embedding')
+
 @router.get("/models")
 async def models(
     settings=Depends(get_settings),
@@ -34,7 +39,7 @@ async def models(
 async def converse(
     req: ChatCompletionRequest, 
     api_key=Depends(RequiresScope([Scope.MODELS_INFERENCE])),
-    backend=Depends(Backend('chat'))
+    backend=Depends(chat_backend)
 ) -> Any:
     core_req = openai_chat_request_to_core(req)
 
@@ -57,7 +62,7 @@ async def converse(
 async def embeddings(
     req: EmbeddingRequest,
     api_key=Depends(RequiresScope([Scope.MODELS_EMBEDDING])),
-    backend=Depends(Backend('embedding'))
+    backend=Depends(embedding_backend)
 ) -> EmbeddingResponse:
     core_req = openai_embed_request_to_core(req)
     resp = await backend.embeddings(core_req)
