@@ -765,3 +765,344 @@ class TestZeroTrustContextAwareAccess:
 
 
 import asyncio  # Add this import at the top since we use asyncio.sleep
+
+
+class TestEnhancedContextAwareAccess:
+    """Enhanced Context-Aware Access Control test cases"""
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_context_005_adaptive_risk_scoring(self, http_client: httpx.AsyncClient,
+                                                        auth_headers: Dict[str, str],
+                                                        make_request):
+        """ZTA_CONTEXT_005: Test adaptive risk scoring based on multiple context factors"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test adaptive risk scoring scenarios
+        risk_scenarios = [
+            {
+                "name": "low_risk",
+                "context": {
+                    "X-Request-Time": datetime.datetime.now().isoformat(),
+                    "X-User-Agent": "Mozilla/5.0 (compatible; Enterprise-Tool/1.0)",
+                    "X-Client-IP": "192.168.1.100",
+                    "X-Risk-Score": "0.1"
+                },
+                "expected_behavior": "allow",
+                "expected_status": 200
+            },
+            {
+                "name": "medium_risk",
+                "context": {
+                    "X-Request-Time": datetime.datetime.now().isoformat(),
+                    "X-User-Agent": "curl/7.68.0",
+                    "X-Client-IP": "203.0.113.42",
+                    "X-Risk-Score": "0.5"
+                },
+                "expected_behavior": "monitor",
+                "expected_status": 200
+            },
+            {
+                "name": "high_risk",
+                "context": {
+                    "X-Request-Time": (datetime.datetime.now() - datetime.timedelta(hours=8)).isoformat(),
+                    "X-User-Agent": "python-requests/2.28.0",
+                    "X-Client-IP": "198.51.100.99",
+                    "X-Risk-Score": "0.9"
+                },
+                "expected_behavior": "challenge",
+                "expected_status": [200, 429]  # May be rate limited
+            }
+        ]
+        
+        for scenario in risk_scenarios:
+            enhanced_headers = dict(auth_headers)
+            enhanced_headers.update(scenario["context"])
+            
+            response = await make_request(
+                http_client, "GET", "/api/v1/models",
+                enhanced_headers, track_cost=False
+            )
+            
+            if isinstance(scenario["expected_status"], list):
+                assert response.status_code in scenario["expected_status"], \
+                    f"Risk scenario '{scenario['name']}' should return one of {scenario['expected_status']}"
+            else:
+                assert response.status_code == scenario["expected_status"], \
+                    f"Risk scenario '{scenario['name']}' should return {scenario['expected_status']}"
+            
+            logger.info(f"Adaptive risk scoring - {scenario['name']}: {response.status_code}")
+        
+        logger.info("ZTA_CONTEXT_005: Adaptive risk scoring verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_context_006_behavioral_analytics(self, http_client: httpx.AsyncClient,
+                                                       auth_headers: Dict[str, str],
+                                                       make_request):
+        """ZTA_CONTEXT_006: Test behavioral analytics and anomaly detection"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Establish baseline behavior pattern
+        baseline_requests = []
+        for i in range(5):
+            response = await make_request(
+                http_client, "GET", "/api/v1/models",
+                auth_headers, track_cost=False
+            )
+            baseline_requests.append(response.status_code)
+            await asyncio.sleep(2)  # Normal spacing
+        
+        # Test behavioral anomalies
+        anomaly_scenarios = [
+            {
+                "name": "rapid_requests",
+                "pattern": "burst",
+                "delay": 0.1,
+                "count": 10
+            },
+            {
+                "name": "unusual_timing",
+                "pattern": "off_hours",
+                "delay": 1,
+                "count": 3
+            },
+            {
+                "name": "frequency_anomaly",
+                "pattern": "excessive",
+                "delay": 0.5,
+                "count": 8
+            }
+        ]
+        
+        for scenario in anomaly_scenarios:
+            behavioral_headers = dict(auth_headers)
+            behavioral_headers.update({
+                "X-Behavior-Pattern": scenario["pattern"],
+                "X-Anomaly-Test": scenario["name"]
+            })
+            
+            anomaly_responses = []
+            for i in range(scenario["count"]):
+                response = await make_request(
+                    http_client, "GET", "/api/v1/models",
+                    behavioral_headers, track_cost=False
+                )
+                anomaly_responses.append(response.status_code)
+                await asyncio.sleep(scenario["delay"])
+            
+            # Analyze behavioral response
+            success_rate = sum(1 for code in anomaly_responses if code == 200) / len(anomaly_responses)
+            
+            # Behavioral analytics may allow some anomalies but should monitor
+            assert success_rate >= 0.5, \
+                f"Behavioral anomaly '{scenario['name']}' should have reasonable success rate"
+            
+            logger.info(f"Behavioral analytics - {scenario['name']}: {success_rate:.2%} success rate")
+        
+        logger.info("ZTA_CONTEXT_006: Behavioral analytics verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_context_007_dynamic_policy_adjustment(self, http_client: httpx.AsyncClient,
+                                                           auth_headers: Dict[str, str],
+                                                           make_request):
+        """ZTA_CONTEXT_007: Test dynamic policy adjustment based on threat intelligence"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test dynamic policy scenarios
+        policy_scenarios = [
+            {
+                "name": "normal_threat_level",
+                "context": {
+                    "X-Threat-Level": "low",
+                    "X-Security-Mode": "normal",
+                    "X-Policy-Version": "1.0"
+                },
+                "expected": 200
+            },
+            {
+                "name": "elevated_threat_level",
+                "context": {
+                    "X-Threat-Level": "medium",
+                    "X-Security-Mode": "enhanced",
+                    "X-Policy-Version": "1.1"
+                },
+                "expected": [200, 429]  # May have additional restrictions
+            },
+            {
+                "name": "high_threat_level",
+                "context": {
+                    "X-Threat-Level": "high",
+                    "X-Security-Mode": "strict",
+                    "X-Policy-Version": "2.0"
+                },
+                "expected": [200, 403, 429]  # May be heavily restricted
+            }
+        ]
+        
+        for scenario in policy_scenarios:
+            policy_headers = dict(auth_headers)
+            policy_headers.update(scenario["context"])
+            
+            response = await make_request(
+                http_client, "GET", "/api/v1/models",
+                policy_headers, track_cost=False
+            )
+            
+            if isinstance(scenario["expected"], list):
+                assert response.status_code in scenario["expected"], \
+                    f"Policy scenario '{scenario['name']}' should return one of {scenario['expected']}"
+            else:
+                assert response.status_code == scenario["expected"], \
+                    f"Policy scenario '{scenario['name']}' should return {scenario['expected']}"
+            
+            logger.info(f"Dynamic policy - {scenario['name']}: {response.status_code}")
+        
+        logger.info("ZTA_CONTEXT_007: Dynamic policy adjustment verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_context_008_continuous_authorization(self, http_client: httpx.AsyncClient,
+                                                          auth_headers: Dict[str, str],
+                                                          make_request):
+        """ZTA_CONTEXT_008: Test continuous authorization and re-evaluation"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test continuous authorization over time
+        authorization_sessions = [
+            {
+                "name": "initial_request",
+                "context": {"X-Session-ID": "sess_001", "X-Auth-Timestamp": str(int(time.time()))},
+                "delay": 0
+            },
+            {
+                "name": "same_session_immediate",
+                "context": {"X-Session-ID": "sess_001", "X-Auth-Timestamp": str(int(time.time()))},
+                "delay": 5
+            },
+            {
+                "name": "same_session_delayed",
+                "context": {"X-Session-ID": "sess_001", "X-Auth-Timestamp": str(int(time.time()) - 300)},  # 5 minutes old
+                "delay": 10
+            },
+            {
+                "name": "new_session",
+                "context": {"X-Session-ID": "sess_002", "X-Auth-Timestamp": str(int(time.time()))},
+                "delay": 2
+            }
+        ]
+        
+        session_results = []
+        
+        for session in authorization_sessions:
+            if session["delay"] > 0:
+                await asyncio.sleep(session["delay"])
+            
+            continuous_headers = dict(auth_headers)
+            continuous_headers.update(session["context"])
+            
+            response = await make_request(
+                http_client, "GET", "/api/v1/models",
+                continuous_headers, track_cost=False
+            )
+            
+            session_results.append({
+                "name": session["name"],
+                "status": response.status_code,
+                "success": response.status_code == 200
+            })
+            
+            logger.info(f"Continuous auth - {session['name']}: {response.status_code}")
+        
+        # Verify continuous authorization behavior
+        initial_success = session_results[0]["success"]
+        immediate_success = session_results[1]["success"]
+        delayed_success = session_results[2]["success"]
+        
+        assert initial_success, "Initial authorization should succeed"
+        assert immediate_success, "Immediate re-authorization should succeed"
+        
+        # Delayed authorization may require re-evaluation
+        if not delayed_success:
+            logger.info("Delayed authorization required re-evaluation (expected behavior)")
+        
+        logger.info("ZTA_CONTEXT_008: Continuous authorization verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_context_009_contextual_decision_engine(self, http_client: httpx.AsyncClient,
+                                                            auth_headers: Dict[str, str],
+                                                            make_request):
+        """ZTA_CONTEXT_009: Test comprehensive contextual decision engine"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Complex contextual scenarios for decision engine
+        decision_scenarios = [
+            {
+                "name": "optimal_context",
+                "context": {
+                    "X-User-Trust-Score": "0.9",
+                    "X-Device-Trust-Score": "0.8",
+                    "X-Network-Trust-Score": "0.9",
+                    "X-Time-Context": "business_hours",
+                    "X-Access-Pattern": "normal"
+                },
+                "expected_decision": "allow",
+                "expected_status": 200
+            },
+            {
+                "name": "mixed_context",
+                "context": {
+                    "X-User-Trust-Score": "0.7",
+                    "X-Device-Trust-Score": "0.5",
+                    "X-Network-Trust-Score": "0.8",
+                    "X-Time-Context": "after_hours",
+                    "X-Access-Pattern": "unusual"
+                },
+                "expected_decision": "conditional",
+                "expected_status": [200, 429]
+            },
+            {
+                "name": "poor_context",
+                "context": {
+                    "X-User-Trust-Score": "0.3",
+                    "X-Device-Trust-Score": "0.2",
+                    "X-Network-Trust-Score": "0.4",
+                    "X-Time-Context": "unusual_hours",
+                    "X-Access-Pattern": "anomalous"
+                },
+                "expected_decision": "deny",
+                "expected_status": [200, 403, 429]  # May still allow with heavy monitoring
+            }
+        ]
+        
+        for scenario in decision_scenarios:
+            decision_headers = dict(auth_headers)
+            decision_headers.update(scenario["context"])
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                decision_headers, {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": f"Contextual decision test: {scenario['name']}"}],
+                    "max_tokens": 50
+                }
+            )
+            
+            if isinstance(scenario["expected_status"], list):
+                assert response.status_code in scenario["expected_status"], \
+                    f"Decision scenario '{scenario['name']}' should return one of {scenario['expected_status']}"
+            else:
+                assert response.status_code == scenario["expected_status"], \
+                    f"Decision scenario '{scenario['name']}' should return {scenario['expected_status']}"
+            
+            # Log decision for analysis
+            logger.info(f"Decision engine - {scenario['name']} ({scenario['expected_decision']}): {response.status_code}")
+        
+        logger.info("ZTA_CONTEXT_009: Contextual decision engine verified")

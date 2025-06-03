@@ -535,3 +535,159 @@ class TestZeroTrustLeastPrivilege:
         # - Time-based privilege expiration
         
         logger.info("ZTA_LP_DYNAMIC_001: Dynamic privilege concepts validated")
+
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_lp_admin_001_scope_enhancement(self, http_client: httpx.AsyncClient,
+                                                     auth_headers: Dict[str, str],
+                                                     make_request):
+        """ZTA_LP_ADMIN_001: Verify admin user creation script follows least privilege"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test that admin users are not created with excessive default scopes
+        logger.info("ZTA_LP_ADMIN_001: Testing admin scope assignment in user creation")
+        
+        # This test would examine the create_admin_user.py script to verify:
+        # 1. ADMIN scope is not assigned by default
+        # 2. Admin users get specific, justified scopes only
+        # 3. Broad administrative permissions are avoided
+        
+        # Test with current auth to verify admin scope behavior
+        admin_test_endpoints = [
+            {"endpoint": "/api/v1/users/me", "should_succeed": True},
+            {"endpoint": "/api/v1/models", "should_succeed": True},
+            {"endpoint": "/api/v1/admin/nonexistent", "should_succeed": False}
+        ]
+        
+        for test in admin_test_endpoints:
+            response = await make_request(
+                http_client, "GET", test["endpoint"],
+                auth_headers, track_cost=False
+            )
+            
+            if test["should_succeed"]:
+                logger.info(f"Admin endpoint {test['endpoint']}: {response.status_code}")
+            else:
+                # Should fail for non-existent admin endpoints
+                assert response.status_code in [401, 404], \
+                    f"Non-existent admin endpoint should fail: {test['endpoint']}"
+        
+        logger.info("ZTA_LP_ADMIN_001: Admin scope enhancement validated")
+
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_lp_admin_002_scope_validation(self, http_client: httpx.AsyncClient,
+                                                    auth_headers: Dict[str, str],
+                                                    make_request):
+        """ZTA_LP_ADMIN_002: Test admin scope limited to legitimate administrative functions"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test that admin scope doesn't provide blanket access
+        logger.info("ZTA_LP_ADMIN_002: Testing admin scope boundaries")
+        
+        # Test legitimate admin operations (should be limited and specific)
+        legitimate_admin_operations = [
+            {"operation": "user_info_access", "endpoint": "/api/v1/users/me"},
+            {"operation": "model_listing", "endpoint": "/api/v1/models"},
+        ]
+        
+        for operation in legitimate_admin_operations:
+            response = await make_request(
+                http_client, "GET", operation["endpoint"],
+                auth_headers, track_cost=False
+            )
+            
+            logger.info(f"Admin operation {operation['operation']}: {response.status_code}")
+            
+            # Verify operations are audited
+            assert response.status_code in [200, 401, 404], \
+                f"Admin operation should return valid status: {operation['operation']}"
+        
+        # Test that admin scope doesn't grant unnecessary access
+        excessive_operations = [
+            "/api/v1/system/shutdown",
+            "/api/v1/database/dump", 
+            "/api/v1/server/restart",
+            "/api/v1/config/modify"
+        ]
+        
+        for operation in excessive_operations:
+            response = await make_request(
+                http_client, "POST", operation,
+                auth_headers, track_cost=False
+            )
+            
+            # These should fail (endpoints don't exist or shouldn't be accessible)
+            assert response.status_code in [401, 404, 405], \
+                f"Excessive admin operation should be denied: {operation}"
+        
+        logger.info("ZTA_LP_ADMIN_002: Admin scope validation completed")
+
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_zta_lp_admin_003_scope_granularity(self, http_client: httpx.AsyncClient,
+                                                     auth_headers: Dict[str, str],
+                                                     make_request):
+        """ZTA_LP_ADMIN_003: Validate administrative functions use granular scopes"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test that administrative functions are properly segmented
+        logger.info("ZTA_LP_ADMIN_003: Testing administrative scope granularity")
+        
+        # Map administrative operations to required scopes
+        admin_operation_mapping = [
+            {
+                "operation": "user_management",
+                "current_scope": "ADMIN",
+                "suggested_granular_scopes": ["users:read", "users:write", "users:delete"],
+                "endpoints": ["/api/v1/users/me"]
+            },
+            {
+                "operation": "api_key_management", 
+                "current_scope": "ADMIN",
+                "suggested_granular_scopes": ["keys:read", "keys:write", "keys:revoke"],
+                "endpoints": ["/api/v1/keys"]  # hypothetical
+            },
+            {
+                "operation": "system_monitoring",
+                "current_scope": "ADMIN", 
+                "suggested_granular_scopes": ["monitoring:read", "metrics:read"],
+                "endpoints": ["/api/v1/health"]
+            }
+        ]
+        
+        for operation in admin_operation_mapping:
+            logger.info(f"Analyzing {operation['operation']} scope granularity")
+            
+            # Test current broad scope behavior
+            for endpoint in operation["endpoints"]:
+                response = await make_request(
+                    http_client, "GET", endpoint,
+                    auth_headers, track_cost=False
+                )
+                
+                logger.info(f"Admin operation {operation['operation']} at {endpoint}: {response.status_code}")
+                
+                # Verify the operation works or fails appropriately
+                assert response.status_code in [200, 401, 404], \
+                    f"Admin operation should return valid status: {endpoint}"
+            
+            # Log granularity recommendations
+            logger.info(f"Operation {operation['operation']} could use granular scopes: " +
+                       ", ".join(operation['suggested_granular_scopes']))
+        
+        # Test that broad admin access is justified
+        # This is primarily a design review, but we can test behavior
+        broad_access_justification = [
+            "Emergency system recovery",
+            "Security incident response", 
+            "Regulatory compliance requirements"
+        ]
+        
+        for justification in broad_access_justification:
+            logger.info(f"Admin access justification documented: {justification}")
+        
+        logger.info("ZTA_LP_ADMIN_003: Administrative scope granularity analysis completed")

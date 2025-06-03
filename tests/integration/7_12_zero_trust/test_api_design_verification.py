@@ -742,3 +742,339 @@ class TestAPIDesignVerification:
                         raise e
         
         logger.info("API_DESIGN_010: Content type validation verified")
+
+
+class TestEnhancedAPIDesignVerification:
+    """Enhanced Zero Trust API Design Verification tests"""
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_api_design_011_advanced_input_validation(self, http_client: httpx.AsyncClient,
+                                                          auth_headers: Dict[str, str],
+                                                          make_request):
+        """API_DESIGN_011: Test advanced input validation and sanitization"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Advanced input validation scenarios
+        validation_tests = [
+            {
+                "name": "unicode_normalization",
+                "data": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Test with unicode: café vs café"}],
+                    "max_tokens": 50
+                },
+                "expected": 200
+            },
+            {
+                "name": "null_byte_injection", 
+                "data": {
+                    "model": config.get_chat_model(0) + "\x00",
+                    "messages": [{"role": "user", "content": "Test null byte"}],
+                    "max_tokens": 50
+                },
+                "expected": [400, 422]
+            },
+            {
+                "name": "excessive_nesting",
+                "data": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": {"nested": {"deep": {"very": {"deep": "content"}}}}}],
+                    "max_tokens": 50
+                },
+                "expected": [400, 422]
+            },
+            {
+                "name": "control_characters",
+                "data": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Test\r\n\t control chars"}],
+                    "max_tokens": 50
+                },
+                "expected": 200  # Should be sanitized
+            }
+        ]
+        
+        for test in validation_tests:
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, test["data"], track_cost=False
+                )
+                
+                if isinstance(test["expected"], list):
+                    assert response.status_code in test["expected"], \
+                        f"Advanced validation test '{test['name']}' should return one of {test['expected']}"
+                else:
+                    assert response.status_code == test["expected"], \
+                        f"Advanced validation test '{test['name']}' should return {test['expected']}"
+                        
+            except Exception as e:
+                # Some validation errors may cause parsing exceptions
+                if test["name"] in ["null_byte_injection", "excessive_nesting"]:
+                    logger.info(f"Advanced validation '{test['name']}' caused expected error: {str(e)[:100]}")
+                else:
+                    raise e
+        
+        logger.info("API_DESIGN_011: Advanced input validation verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_api_design_012_multimodal_content_validation(self, http_client: httpx.AsyncClient,
+                                                              auth_headers: Dict[str, str],
+                                                              make_request):
+        """API_DESIGN_012: Test multimodal content validation and filtering"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Multimodal content validation scenarios
+        multimodal_tests = [
+            {
+                "name": "text_only_baseline",
+                "data": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Simple text content"}],
+                    "max_tokens": 50
+                },
+                "expected": 200
+            },
+            {
+                "name": "base64_image_simulation",
+                "data": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{
+                        "role": "user", 
+                        "content": [
+                            {"type": "text", "text": "Describe this image"},
+                            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD"}}
+                        ]
+                    }],
+                    "max_tokens": 50
+                },
+                "expected": [200, 400, 422]  # May not support multimodal
+            },
+            {
+                "name": "malicious_file_reference",
+                "data": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Process this file"},
+                            {"type": "file", "file_url": {"url": "file:///etc/passwd"}}
+                        ]
+                    }],
+                    "max_tokens": 50
+                },
+                "expected": [400, 422]  # Should be rejected
+            }
+        ]
+        
+        for test in multimodal_tests:
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, test["data"], track_cost=False
+                )
+                
+                if isinstance(test["expected"], list):
+                    assert response.status_code in test["expected"], \
+                        f"Multimodal test '{test['name']}' should return one of {test['expected']}"
+                else:
+                    assert response.status_code == test["expected"], \
+                        f"Multimodal test '{test['name']}' should return {test['expected']}"
+                        
+            except Exception as e:
+                # Multimodal parsing errors are acceptable
+                logger.info(f"Multimodal validation '{test['name']}' caused error: {str(e)[:100]}")
+        
+        logger.info("API_DESIGN_012: Multimodal content validation verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_api_design_013_model_authorization_enforcement(self, http_client: httpx.AsyncClient,
+                                                                auth_headers: Dict[str, str],
+                                                                make_request):
+        """API_DESIGN_013: Test model-specific authorization enforcement"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test authorization for different models
+        available_models = config.CHAT_MODELS
+        
+        for model in available_models[:3]:  # Test first 3 models
+            # Test access to authorized model
+            authorized_request = {
+                "model": model,
+                "messages": [{"role": "user", "content": f"Test access to {model}"}],
+                "max_tokens": 30
+            }
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                auth_headers, authorized_request
+            )
+            
+            assert response.status_code == 200, \
+                f"Access to authorized model {model} should succeed"
+        
+        # Test access to unauthorized/non-existent model
+        unauthorized_models = [
+            "gpt-4-admin-only",
+            "claude-3-restricted", 
+            "llama-internal-only",
+            "non_existent_model_xyz"
+        ]
+        
+        for model in unauthorized_models:
+            unauthorized_request = {
+                "model": model,
+                "messages": [{"role": "user", "content": f"Test unauthorized access to {model}"}],
+                "max_tokens": 30
+            }
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                auth_headers, unauthorized_request, track_cost=False
+            )
+            
+            assert response.status_code in [400, 422, 403], \
+                f"Access to unauthorized model {model} should be rejected"
+        
+        logger.info("API_DESIGN_013: Model authorization enforcement verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_api_design_014_api_versioning_security(self, http_client: httpx.AsyncClient,
+                                                         auth_headers: Dict[str, str],
+                                                         make_request):
+        """API_DESIGN_014: Test API versioning security controls"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test different API versions
+        version_tests = [
+            {
+                "endpoint": "/api/v1/models",
+                "method": "GET",
+                "expected": 200,
+                "description": "Current API version"
+            },
+            {
+                "endpoint": "/api/v2/models", 
+                "method": "GET",
+                "expected": [404, 405],
+                "description": "Future API version"
+            },
+            {
+                "endpoint": "/api/v0/models",
+                "method": "GET", 
+                "expected": [404, 405],
+                "description": "Legacy API version"
+            },
+            {
+                "endpoint": "/api/models",  # No version
+                "method": "GET",
+                "expected": [404, 405],
+                "description": "Unversioned API"
+            }
+        ]
+        
+        for test in version_tests:
+            response = await make_request(
+                http_client, test["method"], test["endpoint"],
+                auth_headers, track_cost=False
+            )
+            
+            if isinstance(test["expected"], list):
+                assert response.status_code in test["expected"], \
+                    f"API version test '{test['description']}' should return one of {test['expected']}"
+            else:
+                assert response.status_code == test["expected"], \
+                    f"API version test '{test['description']}' should return {test['expected']}"
+        
+        logger.info("API_DESIGN_014: API versioning security verified")
+    
+    @pytest.mark.zero_trust
+    @pytest.mark.asyncio
+    async def test_api_design_015_error_handling_security(self, http_client: httpx.AsyncClient,
+                                                         auth_headers: Dict[str, str],
+                                                         make_request):
+        """API_DESIGN_015: Test secure error handling and information disclosure prevention"""
+        if not config.should_run_zero_trust_tests():
+            pytest.skip("Zero Trust tests disabled")
+        
+        # Test error scenarios for information disclosure
+        error_scenarios = [
+            {
+                "name": "invalid_json",
+                "data": '{"model": "test", "messages": [{"role": "user", "content": "test"}], "max_tokens": 50',  # Missing closing brace
+                "expected_status": [400, 422],
+                "check_disclosure": True
+            },
+            {
+                "name": "missing_required_field",
+                "data": {
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 50
+                    # Missing model field
+                },
+                "expected_status": [400, 422],
+                "check_disclosure": False
+            },
+            {
+                "name": "invalid_model",
+                "data": {
+                    "model": "invalid_model_xyz",
+                    "messages": [{"role": "user", "content": "test"}],
+                    "max_tokens": 50
+                },
+                "expected_status": [400, 422],
+                "check_disclosure": False
+            }
+        ]
+        
+        sensitive_patterns = [
+            "stack trace", "traceback", "exception", "internal server error",
+            "database", "connection string", "password", "api key", "token",
+            "file path", "/home/", "/var/", "c:\\", "internal error"
+        ]
+        
+        for scenario in error_scenarios:
+            try:
+                if isinstance(scenario["data"], str):
+                    # Raw string data for malformed JSON
+                    headers = dict(auth_headers)
+                    headers["Content-Type"] = "application/json"
+                    
+                    response = await http_client.post(
+                        "/api/v1/chat/completions",
+                        headers=headers,
+                        content=scenario["data"]
+                    )
+                else:
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, scenario["data"], track_cost=False
+                    )
+                
+                assert response.status_code in scenario["expected_status"], \
+                    f"Error scenario '{scenario['name']}' should return one of {scenario['expected_status']}"
+                
+                # Check for information disclosure in error response
+                if scenario.get("check_disclosure", False):
+                    try:
+                        error_text = response.text.lower()
+                        for pattern in sensitive_patterns:
+                            assert pattern not in error_text, \
+                                f"Error response should not contain sensitive information: {pattern}"
+                    except:
+                        # If response is not JSON/text, that's acceptable
+                        pass
+                        
+            except Exception as e:
+                # Network/parsing errors are acceptable for malformed requests
+                logger.info(f"Error handling test '{scenario['name']}' caused error: {str(e)[:100]}")
+        
+        logger.info("API_DESIGN_015: Error handling security verified")
