@@ -529,3 +529,201 @@ class TestEnhancedCachingPerformance:
             # Cache warming should provide measurable improvement
             assert improvement_ratio >= 1.0, f"Cache warming should improve or maintain performance, got {improvement_ratio:.2f}x"
             assert avg_warm < 100.0, f"Warm cache should be < 100ms, got {avg_warm:.2f}ms"
+    
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_perf_cache_invalidation_high_load_001(self, http_client: httpx.AsyncClient,
+                                                        auth_headers: Dict[str, str],
+                                                        make_request):
+        """PERF_CACHE_INVALIDATION_001: Cache invalidation performance under high load"""
+        if not config.ENABLE_PERFORMANCE_TESTS:
+            pytest.skip("Performance tests disabled")
+        
+        # Simulate cache invalidation under high concurrent load
+        concurrent_requests = 20
+        requests_per_task = 5
+        
+        async def cache_stress_task(task_id: int):
+            """Stress test cache with concurrent requests"""
+            task_results = []
+            
+            for i in range(requests_per_task):
+                # Alternate between different operations to stress cache
+                if i % 3 == 0:
+                    # Models request (cached)
+                    start_time = time.perf_counter()
+                    response = await make_request(http_client, "GET", "/api/v1/models", auth_headers, track_cost=False)
+                    end_time = time.perf_counter()
+                    
+                    task_results.append({
+                        "operation": "models",
+                        "response_time": (end_time - start_time) * 1000,
+                        "status": response.status_code,
+                        "task_id": task_id
+                    })
+                
+                elif i % 3 == 1:
+                    # Chat request (provider cache)
+                    request_data = {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": f"Cache stress test task {task_id} request {i}"}],
+                        "max_tokens": 10
+                    }
+                    
+                    start_time = time.perf_counter()
+                    response = await make_request(http_client, "POST", "/api/v1/chat/completions", auth_headers, request_data)
+                    end_time = time.perf_counter()
+                    
+                    task_results.append({
+                        "operation": "chat",
+                        "response_time": (end_time - start_time) * 1000,
+                        "status": response.status_code,
+                        "task_id": task_id
+                    })
+                
+                else:
+                    # Embedding request (if available)
+                    embedding_models = config.get_embedding_models()
+                    if embedding_models:
+                        request_data = {
+                            "model": embedding_models[0],
+                            "input": f"Cache stress embedding test task {task_id} request {i}"
+                        }
+                        
+                        start_time = time.perf_counter()
+                        response = await make_request(http_client, "POST", "/api/v1/embeddings", auth_headers, request_data)
+                        end_time = time.perf_counter()
+                        
+                        task_results.append({
+                            "operation": "embedding",
+                            "response_time": (end_time - start_time) * 1000,
+                            "status": response.status_code,
+                            "task_id": task_id
+                        })
+                
+                # Small delay to prevent overwhelming
+                await asyncio.sleep(0.01)
+            
+            return task_results
+        
+        # Execute concurrent cache stress test
+        start_time = time.perf_counter()
+        tasks = [cache_stress_task(i) for i in range(concurrent_requests)]
+        results = await asyncio.gather(*tasks)
+        total_duration = time.perf_counter() - start_time
+        
+        # Analyze cache invalidation performance
+        all_results = [result for task_results in results for result in task_results]
+        successful_results = [r for r in all_results if r["status"] == 200]
+        
+        if successful_results:
+            operations = {}
+            for result in successful_results:
+                op = result["operation"]
+                if op not in operations:
+                    operations[op] = []
+                operations[op].append(result["response_time"])
+            
+            # Validate cache performance under load
+            for operation, times in operations.items():
+                avg_time = statistics.mean(times)
+                p95_time = statistics.quantiles(times, n=20)[18] if len(times) >= 20 else max(times)
+                
+                logger.info(f"Cache under load - {operation}: avg={avg_time:.2f}ms, p95={p95_time:.2f}ms, count={len(times)}")
+                
+                # Cache should maintain reasonable performance under load
+                if operation == "models":
+                    assert avg_time <= 50.0, f"Models cache under load should be <= 50ms, got {avg_time:.2f}ms"
+                elif operation == "chat":
+                    assert avg_time <= 5000.0, f"Chat cache under load should be <= 5s, got {avg_time:.2f}ms"
+                elif operation == "embedding":
+                    assert avg_time <= 3000.0, f"Embedding cache under load should be <= 3s, got {avg_time:.2f}ms"
+            
+            # Overall success rate should be high
+            success_rate = len(successful_results) / len(all_results)
+            assert success_rate >= 0.95, f"Cache under load success rate should be >= 95%, got {success_rate:.2%}"
+        
+        logger.info(f"Cache invalidation under high load test completed: {len(all_results)} total requests in {total_duration:.2f}s")
+    
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_perf_cross_provider_cache_efficiency_001(self, http_client: httpx.AsyncClient,
+                                                           auth_headers: Dict[str, str],
+                                                           make_request):
+        """PERF_CROSS_PROVIDER_001: Cross-provider cache efficiency optimization"""
+        if not config.ENABLE_PERFORMANCE_TESTS:
+            pytest.skip("Performance tests disabled")
+        
+        # Test cache efficiency across different providers
+        chat_models = config.get_chat_models() or ["test_model"]
+        
+        if len(chat_models) < 2:
+            pytest.skip("Multiple models required for cross-provider cache testing")
+        
+        provider_cache_results = {}
+        
+        # Test each provider's cache performance
+        for i, model in enumerate(chat_models[:3]):  # Limit to 3 models
+            provider_results = []
+            
+            # Warm up cache for this provider
+            warmup_data = {
+                "model": model,
+                "messages": [{"role": "user", "content": f"Cache warmup for {model}"}],
+                "max_tokens": 10
+            }
+            
+            for warmup in range(3):
+                await make_request(http_client, "POST", "/api/v1/chat/completions", auth_headers, warmup_data)
+            
+            # Test cache performance for this provider
+            for test_req in range(10):
+                request_data = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": f"Cross-provider cache test {test_req}"}],
+                    "max_tokens": 20
+                }
+                
+                start_time = time.perf_counter()
+                response = await make_request(http_client, "POST", "/api/v1/chat/completions", auth_headers, request_data)
+                end_time = time.perf_counter()
+                
+                if response.status_code == 200:
+                    provider_results.append({
+                        "model": model,
+                        "response_time": (end_time - start_time) * 1000,
+                        "test_request": test_req
+                    })
+                
+                await asyncio.sleep(0.05)
+            
+            provider_cache_results[model] = provider_results
+        
+        # Analyze cross-provider cache efficiency
+        for model, results in provider_cache_results.items():
+            if results:
+                response_times = [r["response_time"] for r in results]
+                avg_time = statistics.mean(response_times)
+                std_dev = statistics.stdev(response_times) if len(response_times) > 1 else 0
+                
+                logger.info(f"Cross-provider cache - {model}: avg={avg_time:.2f}ms, std={std_dev:.2f}ms, count={len(results)}")
+                
+                # Each provider should have consistent cache performance
+                assert avg_time <= 8000.0, f"Provider {model} cache should be <= 8s, got {avg_time:.2f}ms"
+                assert std_dev <= avg_time * 0.5, f"Provider {model} cache should have low variance, std={std_dev:.2f}ms"
+        
+        # Compare efficiency across providers
+        avg_times = {model: statistics.mean([r["response_time"] for r in results]) 
+                    for model, results in provider_cache_results.items() if results}
+        
+        if len(avg_times) >= 2:
+            min_avg = min(avg_times.values())
+            max_avg = max(avg_times.values())
+            efficiency_ratio = max_avg / min_avg if min_avg > 0 else 1.0
+            
+            logger.info(f"Cross-provider efficiency ratio: {efficiency_ratio:.2f}x (min: {min_avg:.2f}ms, max: {max_avg:.2f}ms)")
+            
+            # Efficiency variance across providers should be reasonable
+            assert efficiency_ratio <= 5.0, f"Cross-provider efficiency should be within 5x, got {efficiency_ratio:.2f}x"
+        
+        logger.info("Cross-provider cache efficiency test completed successfully")

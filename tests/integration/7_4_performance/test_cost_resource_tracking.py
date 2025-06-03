@@ -743,3 +743,148 @@ class TestEnhancedCostOptimization:
             assert avg_cpu <= 25.0, f"CPU efficiency should be good, avg: {avg_cpu:.2f}%"
             assert throughput >= 5.0, f"Throughput should be reasonable, got: {throughput:.2f} RPS"
             assert avg_response_time < 1000.0, f"Response time should remain efficient, got: {avg_response_time:.2f}ms"
+    
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_perf_cost_api_resource_db_connections_idle_003(self, http_client: httpx.AsyncClient,
+                                                                 auth_headers: Dict[str, str],
+                                                                 make_request):
+        """PERF_COST_API_RESOURCE_DB_CONNECTIONS_IDLE_003: Test database idle connection resource costs"""
+        if not config.ENABLE_PERFORMANCE_TESTS:
+            pytest.skip("Performance tests disabled")
+        
+        # Test database connection resource consumption during idle periods
+        import psutil
+        process = psutil.Process(os.getpid())
+        
+        db_connection_metrics = {
+            "idle_periods": [],
+            "connection_overhead": [],
+            "memory_during_idle": [],
+            "active_periods": [],
+            "connection_efficiency": []
+        }
+        
+        # Baseline measurement
+        baseline_memory = process.memory_info().rss / (1024 * 1024)
+        
+        # Test pattern: Active period -> Idle period -> Active period
+        test_cycles = [
+            {"name": "active_burst", "requests": 10, "idle_duration": 5},
+            {"name": "idle_extended", "requests": 5, "idle_duration": 15},
+            {"name": "active_normal", "requests": 8, "idle_duration": 3}
+        ]
+        
+        for cycle in test_cycles:
+            cycle_metrics = {
+                "active_memory": [],
+                "idle_memory": [],
+                "active_response_times": [],
+                "idle_start_memory": 0,
+                "idle_end_memory": 0,
+                "connection_count": 0
+            }
+            
+            # Active period - generate database load
+            for i in range(cycle["requests"]):
+                memory_before = process.memory_info().rss / (1024 * 1024)
+                
+                # Requests that likely trigger database activity
+                start_time = time.perf_counter()
+                response = await make_request(
+                    http_client, "GET", "/api/v1/models",
+                    auth_headers, track_cost=False
+                )
+                end_time = time.perf_counter()
+                
+                memory_after = process.memory_info().rss / (1024 * 1024)
+                
+                if response.status_code == 200:
+                    cycle_metrics["active_response_times"].append((end_time - start_time) * 1000)
+                    cycle_metrics["active_memory"].append(memory_after)
+                    cycle_metrics["connection_count"] += 1
+                
+                await asyncio.sleep(0.1)
+            
+            # Record memory at start of idle period
+            cycle_metrics["idle_start_memory"] = process.memory_info().rss / (1024 * 1024)
+            
+            # Idle period - monitor database connection overhead
+            idle_samples = []
+            idle_sample_count = max(3, cycle["idle_duration"])
+            
+            for sample in range(idle_sample_count):
+                await asyncio.sleep(cycle["idle_duration"] / idle_sample_count)
+                idle_memory = process.memory_info().rss / (1024 * 1024)
+                idle_samples.append(idle_memory)
+            
+            cycle_metrics["idle_memory"] = idle_samples
+            cycle_metrics["idle_end_memory"] = process.memory_info().rss / (1024 * 1024)
+            
+            # Calculate connection overhead during idle
+            idle_memory_trend = cycle_metrics["idle_end_memory"] - cycle_metrics["idle_start_memory"]
+            connection_overhead = (cycle_metrics["idle_start_memory"] - baseline_memory) / cycle_metrics["connection_count"] if cycle_metrics["connection_count"] > 0 else 0
+            
+            # Calculate connection efficiency
+            avg_active_response = statistics.mean(cycle_metrics["active_response_times"]) if cycle_metrics["active_response_times"] else 0
+            connection_efficiency = cycle_metrics["connection_count"] / avg_active_response if avg_active_response > 0 else 0
+            
+            db_connection_metrics["idle_periods"].append({
+                "cycle": cycle["name"],
+                "idle_duration": cycle["idle_duration"],
+                "memory_trend": idle_memory_trend,
+                "idle_samples": len(idle_samples)
+            })
+            
+            db_connection_metrics["connection_overhead"].append(connection_overhead)
+            db_connection_metrics["memory_during_idle"].extend(idle_samples)
+            db_connection_metrics["active_periods"].append({
+                "cycle": cycle["name"],
+                "requests": cycle_metrics["connection_count"],
+                "avg_response_time": avg_active_response
+            })
+            db_connection_metrics["connection_efficiency"].append(connection_efficiency)
+            
+            logger.info(f"DB connection cycle {cycle['name']} - "
+                       f"Requests: {cycle_metrics['connection_count']}, "
+                       f"Idle trend: {idle_memory_trend:.2f}MB, "
+                       f"Connection overhead: {connection_overhead:.2f}MB/conn, "
+                       f"Avg response: {avg_active_response:.2f}ms")
+        
+        # Analyze overall database connection resource costs
+        if db_connection_metrics["connection_overhead"]:
+            avg_connection_overhead = statistics.mean(db_connection_metrics["connection_overhead"])
+            max_connection_overhead = max(db_connection_metrics["connection_overhead"])
+            
+            # Analyze idle period behavior
+            idle_memory_stability = []
+            for idle_period in db_connection_metrics["idle_periods"]:
+                idle_memory_stability.append(abs(idle_period["memory_trend"]))
+            
+            avg_idle_stability = statistics.mean(idle_memory_stability) if idle_memory_stability else 0
+            
+            # Analyze connection efficiency
+            avg_connection_efficiency = statistics.mean(db_connection_metrics["connection_efficiency"]) if db_connection_metrics["connection_efficiency"] else 0
+            
+            logger.info(f"Database connection resource analysis - "
+                       f"Avg overhead: {avg_connection_overhead:.2f}MB/conn, "
+                       f"Max overhead: {max_connection_overhead:.2f}MB/conn, "
+                       f"Idle stability: {avg_idle_stability:.2f}MB, "
+                       f"Connection efficiency: {avg_connection_efficiency:.3f} conn/ms")
+            
+            # Validate database connection resource efficiency
+            assert avg_connection_overhead <= 10.0, f"Average connection overhead should be reasonable, got {avg_connection_overhead:.2f}MB/conn"
+            assert max_connection_overhead <= 20.0, f"Max connection overhead should be controlled, got {max_connection_overhead:.2f}MB/conn"
+            assert avg_idle_stability <= 5.0, f"Memory should be stable during idle periods, got {avg_idle_stability:.2f}MB variance"
+            
+            # Connection efficiency should be reasonable
+            if avg_connection_efficiency > 0:
+                assert avg_connection_efficiency >= 0.001, f"Connection efficiency should be reasonable, got {avg_connection_efficiency:.6f}"
+        
+        # Final cleanup and verification
+        final_memory = process.memory_info().rss / (1024 * 1024)
+        total_memory_growth = final_memory - baseline_memory
+        
+        assert total_memory_growth <= 50.0, f"Total memory growth should be controlled after connection testing, got {total_memory_growth:.2f}MB"
+        
+        logger.info("Database idle connection resource cost test completed successfully")

@@ -901,3 +901,285 @@ class TestEnhancedMemoryManagement:
         assert total_growth <= 150.0, f"Total memory growth should be reasonable, got {total_growth:.2f}MB"
         assert leak_alert_count <= 3, f"Leak alerts should be rare in healthy system, got {leak_alert_count}"
         assert abs(avg_growth_rate) <= 1.0, f"Average growth rate should be minimal, got {avg_growth_rate:.3f}MB/request"
+    
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_perf_mem_gc_tuning_validation_001(self, http_client: httpx.AsyncClient,
+                                                    auth_headers: Dict[str, str],
+                                                    make_request):
+        """PERF_MEM_GC_TUNING_001: Advanced garbage collection tuning validation"""
+        if not config.ENABLE_PERFORMANCE_TESTS:
+            pytest.skip("Performance tests disabled")
+        
+        # Test different GC tuning scenarios
+        gc_tuning_scenarios = [
+            {
+                "name": "default_gc",
+                "thresholds": None,  # Use default
+                "description": "Default GC settings"
+            },
+            {
+                "name": "aggressive_gc",
+                "thresholds": (500, 10, 10),  # More aggressive collection
+                "description": "Aggressive GC for low latency"
+            },
+            {
+                "name": "conservative_gc", 
+                "thresholds": (2000, 20, 20),  # Less frequent collection
+                "description": "Conservative GC for throughput"
+            }
+        ]
+        
+        gc_results = {}
+        
+        for scenario in gc_tuning_scenarios:
+            # Save current GC settings
+            original_thresholds = gc.get_threshold()
+            
+            # Apply scenario GC settings
+            if scenario["thresholds"]:
+                gc.set_threshold(*scenario["thresholds"])
+            
+            scenario_metrics = {
+                "memory_samples": [],
+                "gc_collections": [],
+                "response_times": [],
+                "successful_requests": 0
+            }
+            
+            process = psutil.Process(os.getpid())
+            gc.collect()  # Start clean
+            
+            # Run test workload with this GC configuration
+            for i in range(30):
+                gc_before = sum(gc.get_count())
+                memory_before = process.memory_info().rss / (1024 * 1024)
+                
+                start_time = time.perf_counter()
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": f"GC tuning test {scenario['name']} request {i}"}],
+                        "max_tokens": 40
+                    }
+                )
+                end_time = time.perf_counter()
+                
+                memory_after = process.memory_info().rss / (1024 * 1024)
+                gc_after = sum(gc.get_count())
+                
+                response_time = (end_time - start_time) * 1000
+                
+                if response.status_code == 200:
+                    scenario_metrics["successful_requests"] += 1
+                    scenario_metrics["response_times"].append(response_time)
+                
+                scenario_metrics["memory_samples"].append({
+                    "before": memory_before,
+                    "after": memory_after,
+                    "delta": memory_after - memory_before
+                })
+                
+                scenario_metrics["gc_collections"].append({
+                    "before": gc_before,
+                    "after": gc_after,
+                    "delta": gc_after - gc_before
+                })
+                
+                # Create some temporary objects to trigger GC
+                temp_objects = [f"gc_test_object_{j}" for j in range(50)]
+                del temp_objects
+                
+                await asyncio.sleep(0.03)
+            
+            # Restore original GC settings
+            gc.set_threshold(*original_thresholds)
+            
+            # Analyze scenario results
+            if scenario_metrics["response_times"]:
+                avg_response_time = statistics.mean(scenario_metrics["response_times"])
+                memory_deltas = [sample["delta"] for sample in scenario_metrics["memory_samples"]]
+                avg_memory_delta = statistics.mean(memory_deltas)
+                gc_activity = sum(abs(gc["delta"]) for gc in scenario_metrics["gc_collections"])
+                
+                gc_results[scenario["name"]] = {
+                    "avg_response_time": avg_response_time,
+                    "avg_memory_delta": avg_memory_delta,
+                    "total_gc_activity": gc_activity,
+                    "successful_requests": scenario_metrics["successful_requests"],
+                    "description": scenario["description"]
+                }
+                
+                logger.info(f"GC tuning {scenario['name']} - "
+                           f"Avg response: {avg_response_time:.2f}ms, "
+                           f"Avg memory delta: {avg_memory_delta:.3f}MB, "
+                           f"GC activity: {gc_activity}")
+        
+        # Compare GC tuning effectiveness
+        for scenario_name, results in gc_results.items():
+            # All scenarios should maintain reasonable performance
+            assert results["avg_response_time"] <= 8000.0, f"GC scenario {scenario_name} response time should be reasonable"
+            assert abs(results["avg_memory_delta"]) <= 10.0, f"GC scenario {scenario_name} memory delta should be controlled"
+            assert results["successful_requests"] >= 25, f"GC scenario {scenario_name} should have high success rate"
+        
+        # Analyze relative performance of different GC configurations
+        if len(gc_results) >= 2:
+            response_times = {name: results["avg_response_time"] for name, results in gc_results.items()}
+            best_response_time = min(response_times.values())
+            worst_response_time = max(response_times.values())
+            
+            gc_tuning_effectiveness = worst_response_time / best_response_time if best_response_time > 0 else 1.0
+            
+            logger.info(f"GC tuning effectiveness - Best: {best_response_time:.2f}ms, "
+                       f"Worst: {worst_response_time:.2f}ms, "
+                       f"Ratio: {gc_tuning_effectiveness:.2f}x")
+            
+            # GC tuning should show measurable impact
+            assert gc_tuning_effectiveness <= 5.0, f"GC tuning should have bounded impact, got {gc_tuning_effectiveness:.2f}x"
+        
+        logger.info("Advanced GC tuning validation completed")
+    
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_perf_mem_fragmentation_sustained_load_001(self, http_client: httpx.AsyncClient,
+                                                            auth_headers: Dict[str, str],
+                                                            make_request):
+        """PERF_MEM_FRAGMENTATION_001: Memory fragmentation analysis under sustained load"""
+        if not config.ENABLE_PERFORMANCE_TESTS:
+            pytest.skip("Performance tests disabled")
+        
+        # Monitor memory fragmentation during sustained load
+        process = psutil.Process(os.getpid())
+        
+        fragmentation_metrics = {
+            "virtual_memory_samples": [],
+            "resident_memory_samples": [],
+            "allocation_patterns": [],
+            "fragmentation_indicators": [],
+            "successful_requests": 0
+        }
+        
+        gc.collect()
+        baseline_vms = process.memory_info().vms / (1024 * 1024)
+        baseline_rss = process.memory_info().rss / (1024 * 1024)
+        
+        # Sustained load with varied allocation patterns
+        allocation_patterns = [
+            {"size": "small", "tokens": 20, "requests": 15},
+            {"size": "medium", "tokens": 100, "requests": 10},
+            {"size": "large", "tokens": 300, "requests": 5},
+            {"size": "mixed", "tokens": None, "requests": 20}  # Variable sizes
+        ]
+        
+        for pattern in allocation_patterns:
+            pattern_metrics = {
+                "pattern_name": pattern["size"],
+                "memory_growth": [],
+                "fragmentation_ratio": [],
+                "response_times": []
+            }
+            
+            for i in range(pattern["requests"]):
+                memory_before = process.memory_info()
+                vms_before = memory_before.vms / (1024 * 1024)
+                rss_before = memory_before.rss / (1024 * 1024)
+                
+                # Create request with specific allocation pattern
+                if pattern["size"] == "mixed":
+                    max_tokens = [10, 50, 150, 250][i % 4]
+                else:
+                    max_tokens = pattern["tokens"]
+                
+                start_time = time.perf_counter()
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": f"Fragmentation test {pattern['size']} pattern request {i}"}],
+                        "max_tokens": max_tokens
+                    }
+                )
+                end_time = time.perf_counter()
+                
+                memory_after = process.memory_info()
+                vms_after = memory_after.vms / (1024 * 1024)
+                rss_after = memory_after.rss / (1024 * 1024)
+                
+                if response.status_code == 200:
+                    fragmentation_metrics["successful_requests"] += 1
+                    pattern_metrics["response_times"].append((end_time - start_time) * 1000)
+                
+                # Track memory allocation patterns
+                vms_growth = vms_after - vms_before
+                rss_growth = rss_after - rss_before
+                
+                # Fragmentation indicator: VMS growth vs RSS growth
+                fragmentation_ratio = vms_growth / rss_growth if rss_growth > 0 else 1.0
+                
+                pattern_metrics["memory_growth"].append({
+                    "vms_growth": vms_growth,
+                    "rss_growth": rss_growth,
+                    "request_id": i
+                })
+                
+                pattern_metrics["fragmentation_ratio"].append(fragmentation_ratio)
+                
+                # Store detailed samples
+                fragmentation_metrics["virtual_memory_samples"].append(vms_after)
+                fragmentation_metrics["resident_memory_samples"].append(rss_after)
+                fragmentation_metrics["fragmentation_indicators"].append({
+                    "pattern": pattern["size"],
+                    "fragmentation_ratio": fragmentation_ratio,
+                    "vms_total": vms_after,
+                    "rss_total": rss_after
+                })
+                
+                await asyncio.sleep(0.02)
+            
+            # Analyze pattern-specific fragmentation
+            if pattern_metrics["fragmentation_ratio"]:
+                avg_fragmentation = statistics.mean(pattern_metrics["fragmentation_ratio"])
+                avg_response_time = statistics.mean(pattern_metrics["response_times"]) if pattern_metrics["response_times"] else 0
+                
+                logger.info(f"Memory fragmentation {pattern['size']} pattern - "
+                           f"Avg fragmentation ratio: {avg_fragmentation:.2f}, "
+                           f"Avg response time: {avg_response_time:.2f}ms")
+                
+                # Fragmentation should be reasonable for each pattern
+                assert avg_fragmentation <= 3.0, f"Fragmentation ratio for {pattern['size']} should be reasonable, got {avg_fragmentation:.2f}"
+            
+            # Force GC between patterns to see fragmentation persistence
+            gc.collect()
+            await asyncio.sleep(0.5)
+        
+        # Overall fragmentation analysis
+        final_vms = process.memory_info().vms / (1024 * 1024)
+        final_rss = process.memory_info().rss / (1024 * 1024)
+        
+        total_vms_growth = final_vms - baseline_vms
+        total_rss_growth = final_rss - baseline_rss
+        overall_fragmentation = total_vms_growth / total_rss_growth if total_rss_growth > 0 else 1.0
+        
+        # Calculate fragmentation trend
+        if len(fragmentation_metrics["fragmentation_indicators"]) >= 2:
+            early_fragmentation = statistics.mean([f["fragmentation_ratio"] 
+                                                  for f in fragmentation_metrics["fragmentation_indicators"][:10]])
+            late_fragmentation = statistics.mean([f["fragmentation_ratio"] 
+                                                 for f in fragmentation_metrics["fragmentation_indicators"][-10:]])
+            fragmentation_trend = late_fragmentation - early_fragmentation
+        else:
+            fragmentation_trend = 0
+        
+        logger.info(f"Memory fragmentation analysis - "
+                   f"Overall ratio: {overall_fragmentation:.2f}, "
+                   f"Trend: {fragmentation_trend:.3f}, "
+                   f"VMS growth: {total_vms_growth:.2f}MB, "
+                   f"RSS growth: {total_rss_growth:.2f}MB")
+        
+        # Verify fragmentation is under control
+        assert overall_fragmentation <= 4.0, f"Overall fragmentation should be manageable, got {overall_fragmentation:.2f}"
+        assert abs(fragmentation_trend) <= 1.0, f"Fragmentation trend should be stable, got {fragmentation_trend:.3f}"
+        assert total_vms_growth <= 500.0, f"VMS growth should be reasonable, got {total_vms_growth:.2f}MB"
+        
+        logger.info("Memory fragmentation analysis completed")

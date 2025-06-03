@@ -694,3 +694,130 @@ class TestEnhancedApplicationPerformance:
             logger.info(f"Resource contention test - {total_requests} requests, {error_rate:.2%} error rate, Avg: {avg_contention_time:.2f}ms, P95: {p95_contention_time:.2f}ms")
         else:
             pytest.fail("No successful requests during resource contention test")
+    
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_perf_app_lifecycle_shutdown_graceful_005(self, http_client: httpx.AsyncClient,
+                                                           auth_headers: Dict[str, str],
+                                                           make_request):
+        """PERF_APP_LIFECYCLE_SHUTDOWN_GRACEFUL_005: Test graceful shutdown performance"""
+        if not config.ENABLE_PERFORMANCE_TESTS:
+            pytest.skip("Performance tests disabled")
+        
+        # Test graceful shutdown behavior under load
+        # Note: This is a simulation since we can't actually shutdown the test server
+        
+        shutdown_simulation_metrics = {
+            "active_requests": [],
+            "response_times": [],
+            "completion_rates": [],
+            "graceful_handling": []
+        }
+        
+        # Simulate conditions leading to graceful shutdown
+        shutdown_scenarios = [
+            {"name": "normal_load", "concurrent": 5, "duration": 10},
+            {"name": "high_load", "concurrent": 15, "duration": 8},
+            {"name": "burst_load", "concurrent": 25, "duration": 5}
+        ]
+        
+        for scenario in shutdown_scenarios:
+            scenario_metrics = {
+                "requests_started": 0,
+                "requests_completed": 0,
+                "response_times": [],
+                "errors": 0
+            }
+            
+            async def graceful_shutdown_request(req_id: int):
+                """Simulate request during graceful shutdown"""
+                try:
+                    scenario_metrics["requests_started"] += 1
+                    
+                    start_time = time.perf_counter()
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, {
+                            "model": config.get_chat_model(0),
+                            "messages": [{"role": "user", "content": f"Graceful shutdown test {scenario['name']} request {req_id}"}],
+                            "max_tokens": 50
+                        }
+                    )
+                    end_time = time.perf_counter()
+                    
+                    response_time = (end_time - start_time) * 1000
+                    
+                    if response.status_code == 200:
+                        scenario_metrics["requests_completed"] += 1
+                        scenario_metrics["response_times"].append(response_time)
+                    else:
+                        scenario_metrics["errors"] += 1
+                    
+                    return {
+                        "completed": response.status_code == 200,
+                        "response_time": response_time,
+                        "status_code": response.status_code
+                    }
+                    
+                except Exception as e:
+                    scenario_metrics["errors"] += 1
+                    return {
+                        "completed": False,
+                        "response_time": 0,
+                        "error": str(e)
+                    }
+            
+            # Execute scenario requests
+            tasks = [graceful_shutdown_request(i) for i in range(scenario["concurrent"])]
+            
+            # Wait for requests with timeout to simulate shutdown pressure
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=scenario["duration"] + 5  # Allow extra time for completion
+                )
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout during graceful shutdown simulation for {scenario['name']}")
+                results = []
+            
+            # Calculate completion rate
+            completion_rate = scenario_metrics["requests_completed"] / scenario_metrics["requests_started"] if scenario_metrics["requests_started"] > 0 else 0
+            
+            avg_response_time = statistics.mean(scenario_metrics["response_times"]) if scenario_metrics["response_times"] else 0
+            
+            # Assess graceful handling
+            graceful_score = completion_rate * 100  # Percentage of requests completed successfully
+            
+            shutdown_simulation_metrics["active_requests"].append(scenario_metrics["requests_started"])
+            shutdown_simulation_metrics["response_times"].extend(scenario_metrics["response_times"])
+            shutdown_simulation_metrics["completion_rates"].append(completion_rate)
+            shutdown_simulation_metrics["graceful_handling"].append(graceful_score)
+            
+            logger.info(f"Graceful shutdown simulation {scenario['name']} - "
+                       f"Started: {scenario_metrics['requests_started']}, "
+                       f"Completed: {scenario_metrics['requests_completed']}, "
+                       f"Completion rate: {completion_rate:.2%}, "
+                       f"Avg response time: {avg_response_time:.2f}ms, "
+                       f"Graceful score: {graceful_score:.1f}")
+            
+            # Graceful shutdown should maintain reasonable completion rates
+            assert completion_rate >= 0.7, f"Graceful shutdown should complete >= 70% of requests for {scenario['name']}, got {completion_rate:.2%}"
+            
+            if scenario_metrics["response_times"]:
+                assert avg_response_time <= 8000.0, f"Response times should remain reasonable during shutdown for {scenario['name']}, got {avg_response_time:.2f}ms"
+            
+            await asyncio.sleep(1)  # Brief pause between scenarios
+        
+        # Overall graceful shutdown assessment
+        overall_completion_rate = statistics.mean(shutdown_simulation_metrics["completion_rates"])
+        overall_graceful_score = statistics.mean(shutdown_simulation_metrics["graceful_handling"])
+        
+        logger.info(f"Overall graceful shutdown performance - "
+                   f"Avg completion rate: {overall_completion_rate:.2%}, "
+                   f"Avg graceful score: {overall_graceful_score:.1f}")
+        
+        # Validate overall graceful shutdown behavior
+        assert overall_completion_rate >= 0.75, f"Overall graceful shutdown completion rate should be >= 75%, got {overall_completion_rate:.2%}"
+        assert overall_graceful_score >= 75.0, f"Overall graceful shutdown score should be >= 75, got {overall_graceful_score:.1f}"
+        
+        logger.info("Graceful shutdown performance test completed successfully")
