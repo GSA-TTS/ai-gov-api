@@ -4,6 +4,10 @@ from functools import singledispatch
 from typing import Union, Iterator, AsyncGenerator, Any, Literal
 import structlog
 
+from ..exceptions import (
+    BedrockUnavailable,
+    BedrockValidationError
+)
 from ..core.chat_schema import (
     ChatRepsonse,
     CompletionUsage,
@@ -27,7 +31,10 @@ from .converse_schemas import (
     ContentBlockStopEvent,
     MessageStopEvent,
     StartToolUse,
-    ToolUseBlock
+    ToolUseBlock,
+    InternalServerExceptionEvent,
+    ModelStreamErrorExceptionEvent,
+    ValidationExceptionEvent
 )
 from .cohere_embedding_schemas import CohereRepsonse
 
@@ -181,6 +188,23 @@ def _(part: MetadataEvent) -> Iterator[RespPiece]:
             completion_tokens=part.metadata.usage.output_tokens,
             total_tokens=part.metadata.usage.total_tokens,
     )
+
+## stream exception events
+@_event_to_oai.register
+def _(ev: InternalServerExceptionEvent) -> Iterator[RespPiece]:
+    raise BedrockUnavailable(ev.internal_server_exception.message or
+                             "Internal error from Bedrock")
+
+@_event_to_oai.register
+def _(ev: ModelStreamErrorExceptionEvent) -> Iterator[RespPiece]:
+    raise BedrockUnavailable(ev.model_stream_error_exception.message or
+                             "Stream error from model")
+
+@_event_to_oai.register
+def _(ev: ValidationExceptionEvent) -> Iterator[RespPiece]:
+    raise BedrockValidationError(ev.validation_exception.message or
+                                 "Validation error in streaming request")
+
 
 async def bedrock_chat_stream_response_to_core(bedrockStream, model:str, id:str) -> AsyncGenerator[StreamResponse, Any]: 
     usage = None

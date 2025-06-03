@@ -25,7 +25,6 @@ import botocore.exceptions
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.providers.exceptions import ModelError, InvalidInput
 from app.providers.base import Backend, LLMModel
 from .adapter_from_core import core_to_bedrock, core_embed_request_to_bedrock
 from .adapter_to_core import bedrock_chat_response_to_core, bedorock_embed_reposonse_to_core, bedrock_chat_stream_response_to_core
@@ -33,6 +32,31 @@ from ..core.chat_schema import ChatRequest, ChatRepsonse, StreamResponse
 from ..core.embed_schema import EmbeddingResponse, EmbeddingRequest
 from .converse_schemas import ConverseResponse
 from .cohere_embedding_schemas import CohereRepsonse
+
+from ..exceptions import (
+    ModelError,
+    BedrockValidationError,
+    BedrockAccessDenied,
+    BedrockNotFound,
+    BedrockThrottled,
+    BedrockUnavailable,
+)
+
+_ERR_MAP = {
+    "ValidationException": BedrockValidationError,
+    "AccessDeniedException": BedrockAccessDenied,
+    "ResourceNotFoundException": BedrockNotFound,
+    "ThrottlingException": BedrockThrottled,
+    "ServiceUnavailableException": BedrockUnavailable,
+    "InternalServerException": BedrockUnavailable,   # treat same as 503
+}
+
+def _map_bedrock_error(e):
+    error_dict = e.response.get("Error", {})
+    code = error_dict.get("Code", "Unknown")
+    message = error_dict.get("Message", "")
+    exc_cls = _ERR_MAP.get(code, ModelError)
+    return exc_cls(f"{code}: {message}", original_exception=e)
 
 
 log = structlog.get_logger()
@@ -141,7 +165,9 @@ class BedRockBackend(Backend):
             try:
                 response = await client.converse(**body)
             except botocore.exceptions.ClientError as e:
-                raise InvalidInput(str(e), original_exception=e)
+                raise _map_bedrock_error(e) from e
+            except botocore.exceptions.ParamValidationError as e:
+                raise BedrockValidationError(str(e), original_exception=e) from e
             
             log.info("model metrics", model=converted.model_id, **response['metrics'])
         
@@ -156,12 +182,17 @@ class BedRockBackend(Backend):
 
         session = aioboto3.Session()        
         async with session.client("bedrock-runtime", config=self.retry_config) as client:
-            response = await client.invoke_model(
-                body=body,
-                modelId=modelId,
-                accept = '*/*',
-                contentType = 'application/json'
-                )
+            try:
+                response = await client.invoke_model(
+                    body=body,
+                    modelId=modelId,
+                    accept = '*/*',
+                    contentType = 'application/json'
+                    )
+            except botocore.exceptions.ClientError as e:
+                raise _map_bedrock_error(e) from e
+            except botocore.exceptions.ParamValidationError as e:
+                raise BedrockValidationError(str(e), original_exception=e) from e
 
             headers = response['ResponseMetadata']['HTTPHeaders']
             latency = headers['x-amzn-bedrock-invocation-latency']
@@ -195,14 +226,8 @@ class BedRockBackend(Backend):
                         log.info("model metrics", model=chunk.model, **usage.model_dump())
                     yield chunk
         except botocore.exceptions.ClientError as e:
-            # Bedrock will inject errors as stream chunk but OpenAI does not.
-            # Mid stream errors are probably not recoverable since
-            # the stream response has been returned at this point.
-            # So just log and raise
-            log.exception(e)
-            raise ModelError(str(e), original_exception=e)
-        except Exception as e:
-            log.exception(e)
-            raise ModelError(str(e), original_exception=e)
+            raise _map_bedrock_error(e) from e
+        except botocore.exceptions.ParamValidationError as e:
+            raise BedrockValidationError(str(e), original_exception=e) from e
 
         
