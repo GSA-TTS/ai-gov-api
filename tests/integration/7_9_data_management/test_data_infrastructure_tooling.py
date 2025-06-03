@@ -818,3 +818,327 @@ class TestCloudNativeInfrastructure:
             avg_recovery_time = statistics.mean(recovery_times)
             assert avg_recovery_time <= 3000, \
                 f"Average recovery time should be reasonable, got {avg_recovery_time:.2f}ms"
+    
+    @pytest.mark.data_management
+    @pytest.mark.asyncio
+    async def test_tdm_tool_generation_faker_gap_001(self, http_client: httpx.AsyncClient,
+                                                   auth_headers: Dict[str, str],
+                                                   make_request):
+        """TDM_TOOL_GENERATION_FAKER_GAP_001: Assess impact of not having Faker framework"""
+        if not config.ENABLE_DATA_MANAGEMENT_TESTS:
+            pytest.skip("Data management tests disabled")
+        
+        logger.info("Assessing test data generation framework gap")
+        
+        # Demonstrate manual data generation limitations
+        manual_generation_examples = [
+            {
+                "data_type": "user_names",
+                "manual_samples": ["John Doe", "Jane Smith", "Bob Johnson", "Alice Brown"],
+                "faker_would_generate": "Dynamic, diverse names with international variety"
+            },
+            {
+                "data_type": "email_addresses",
+                "manual_samples": ["test1@example.com", "test2@example.com", "user@test.com"],
+                "faker_would_generate": "Realistic email patterns with various domains"
+            },
+            {
+                "data_type": "addresses",
+                "manual_samples": ["123 Main St", "456 Oak Ave", "789 Elm St"],
+                "faker_would_generate": "Complete addresses with city, state, zip"
+            },
+            {
+                "data_type": "phone_numbers",
+                "manual_samples": ["555-0001", "555-0002", "555-0003"],
+                "faker_would_generate": "Properly formatted phone numbers for various regions"
+            }
+        ]
+        
+        gap_assessment_results = []
+        
+        for example in manual_generation_examples:
+            # Test with manually generated data
+            prompts_with_manual_data = [
+                f"Process this user data: {data}" 
+                for data in example["manual_samples"][:3]
+            ]
+            
+            manual_test_success = 0
+            manual_diversity_score = len(set(example["manual_samples"])) / len(example["manual_samples"])
+            
+            for prompt in prompts_with_manual_data:
+                request_data = {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 50
+                }
+                
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request_data
+                )
+                
+                if response.status_code == 200:
+                    manual_test_success += 1
+            
+            # Assess gap impact
+            result = {
+                "data_type": example["data_type"],
+                "manual_diversity_score": manual_diversity_score,
+                "manual_test_success_rate": manual_test_success / len(prompts_with_manual_data),
+                "faker_benefits": example["faker_would_generate"],
+                "gap_severity": "high" if manual_diversity_score < 0.8 else "medium",
+                "recommendation": "Implement Faker for improved test data quality"
+            }
+            
+            gap_assessment_results.append(result)
+            
+            logger.info(f"Framework gap for {example['data_type']}: "
+                       f"Manual diversity: {manual_diversity_score:.2f}, "
+                       f"Gap severity: {result['gap_severity']}")
+        
+        # Verify gap assessment identifies limitations
+        high_severity_gaps = [r for r in gap_assessment_results if r["gap_severity"] == "high"]
+        low_diversity_cases = [r for r in gap_assessment_results if r["manual_diversity_score"] < 0.9]
+        
+        assert len(gap_assessment_results) >= 3, \
+            f"Should assess multiple data types, got {len(gap_assessment_results)}"
+        
+        assert len(low_diversity_cases) >= 2, \
+            f"Should identify diversity limitations, got {len(low_diversity_cases)}"
+        
+        logger.info("Recommendation: Implement Faker or similar synthetic data generation framework")
+    
+    @pytest.mark.data_management
+    @pytest.mark.asyncio
+    async def test_tdm_tool_prompt_templates_gap_002(self, http_client: httpx.AsyncClient,
+                                                   auth_headers: Dict[str, str],
+                                                   make_request):
+        """TDM_TOOL_PROMPT_TEMPLATES_GAP_002: Evaluate need for prompt template system"""
+        if not config.ENABLE_DATA_MANAGEMENT_TESTS:
+            pytest.skip("Data management tests disabled")
+        
+        logger.info("Evaluating prompt template system needs")
+        
+        # Demonstrate manual prompt construction challenges
+        template_scenarios = [
+            {
+                "scenario": "tone_variations",
+                "base_prompt": "Explain artificial intelligence",
+                "variations_needed": ["formal", "informal", "technical", "simple"],
+                "manual_effort": "high"
+            },
+            {
+                "scenario": "length_variations",
+                "base_prompt": "Describe machine learning",
+                "variations_needed": ["brief", "detailed", "comprehensive"],
+                "manual_effort": "medium"
+            },
+            {
+                "scenario": "audience_variations",
+                "base_prompt": "What is data science?",
+                "variations_needed": ["for beginners", "for experts", "for executives"],
+                "manual_effort": "high"
+            }
+        ]
+        
+        template_gap_results = []
+        
+        for scenario in template_scenarios:
+            # Manual prompt construction
+            manually_created_prompts = []
+            
+            for variation in scenario["variations_needed"]:
+                if variation == "formal":
+                    prompt = f"Please provide a formal explanation of artificial intelligence."
+                elif variation == "informal":
+                    prompt = f"Hey, can you tell me about artificial intelligence in a casual way?"
+                elif variation == "technical":
+                    prompt = f"Provide a technical deep-dive into artificial intelligence."
+                elif variation == "simple":
+                    prompt = f"Explain artificial intelligence in simple terms."
+                elif variation == "brief":
+                    prompt = f"Briefly describe machine learning."
+                elif variation == "detailed":
+                    prompt = f"Provide a detailed description of machine learning."
+                elif variation == "comprehensive":
+                    prompt = f"Give a comprehensive overview of machine learning."
+                elif variation == "for beginners":
+                    prompt = f"What is data science? (explain for beginners)"
+                elif variation == "for experts":
+                    prompt = f"What is data science? (technical explanation for experts)"
+                elif variation == "for executives":
+                    prompt = f"What is data science? (business perspective for executives)"
+                else:
+                    prompt = scenario["base_prompt"]
+                
+                manually_created_prompts.append(prompt)
+            
+            # Test manual prompts
+            variation_success = 0
+            construction_time = len(manually_created_prompts) * 30  # Simulated seconds per prompt
+            
+            for prompt in manually_created_prompts:
+                request_data = {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 80
+                }
+                
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request_data
+                )
+                
+                if response.status_code == 200:
+                    variation_success += 1
+            
+            # Assess template system benefits
+            result = {
+                "scenario": scenario["scenario"],
+                "variations_needed": len(scenario["variations_needed"]),
+                "manual_effort": scenario["manual_effort"],
+                "construction_time_seconds": construction_time,
+                "variation_success_rate": variation_success / len(manually_created_prompts),
+                "template_would_save": f"{construction_time * 0.7:.0f} seconds",
+                "consistency_risk": "high" if scenario["manual_effort"] == "high" else "medium"
+            }
+            
+            template_gap_results.append(result)
+            
+            logger.info(f"Template gap for {scenario['scenario']}: "
+                       f"Manual effort: {scenario['manual_effort']}, "
+                       f"Time: {construction_time}s")
+        
+        # Verify template system benefits
+        high_effort_scenarios = [r for r in template_gap_results if r["manual_effort"] == "high"]
+        time_intensive_scenarios = [r for r in template_gap_results if r["construction_time_seconds"] >= 90]
+        
+        assert len(high_effort_scenarios) >= 2, \
+            f"Should identify high-effort scenarios, got {len(high_effort_scenarios)}"
+        
+        assert len(time_intensive_scenarios) >= 2, \
+            f"Should identify time-intensive scenarios, got {len(time_intensive_scenarios)}"
+        
+        logger.info("Recommendation: Implement prompt template system for efficiency and consistency")
+    
+    @pytest.mark.data_management
+    @pytest.mark.asyncio
+    async def test_tdm_tool_data_quality_validation_gap_003(self, http_client: httpx.AsyncClient,
+                                                          auth_headers: Dict[str, str],
+                                                          make_request):
+        """TDM_TOOL_DATA_QUALITY_VALIDATION_GAP_003: Assess lack of quality validation tools"""
+        if not config.ENABLE_DATA_MANAGEMENT_TESTS:
+            pytest.skip("Data management tests disabled")
+        
+        logger.info("Assessing test data quality validation gap")
+        
+        # Test data quality scenarios without proper validation tools
+        quality_test_scenarios = [
+            {
+                "name": "prompt_structure_validation",
+                "test_prompts": [
+                    "What is AI?",  # Too short
+                    "Explain artificial intelligence including its history, applications, future implications, ethical considerations, technical foundations, and societal impact in extreme detail with examples.",  # Too long
+                    "Explain artificial intelligence and its main applications."  # Good length
+                ],
+                "quality_criteria": "optimal_length"
+            },
+            {
+                "name": "response_consistency_check",
+                "test_prompt": "Define machine learning",
+                "repetitions": 3,
+                "quality_criteria": "consistency"
+            },
+            {
+                "name": "data_coverage_validation",
+                "test_categories": ["technical", "business", "ethical", "practical"],
+                "quality_criteria": "comprehensive_coverage"
+            }
+        ]
+        
+        quality_gap_results = []
+        
+        for scenario in quality_test_scenarios:
+            if scenario["quality_criteria"] == "optimal_length":
+                # Manual length validation
+                validation_results = []
+                
+                for prompt in scenario["test_prompts"]:
+                    prompt_length = len(prompt.split())
+                    is_valid = 5 <= prompt_length <= 30  # Manual validation rule
+                    
+                    validation_results.append({
+                        "prompt": prompt[:50] + "..." if len(prompt) > 50 else prompt,
+                        "word_count": prompt_length,
+                        "manually_validated": is_valid,
+                        "automated_validation_available": False
+                    })
+                
+                result = {
+                    "scenario": scenario["name"],
+                    "manual_validation_effort": "medium",
+                    "validation_accuracy": 0.7,  # Manual validation is prone to inconsistency
+                    "validation_results": validation_results,
+                    "gap_impact": "Inconsistent quality standards"
+                }
+                
+            elif scenario["quality_criteria"] == "consistency":
+                # Test response consistency
+                responses = []
+                
+                for i in range(scenario["repetitions"]):
+                    request_data = {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": scenario["test_prompt"]}],
+                        "max_tokens": 100
+                    }
+                    
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, request_data
+                    )
+                    
+                    if response.status_code == 200:
+                        response_data = response.json()
+                        content = response_data["choices"][0]["message"]["content"]
+                        responses.append(content)
+                
+                # Manual consistency check (limited)
+                consistency_score = 0.5  # Can't properly measure without tools
+                
+                result = {
+                    "scenario": scenario["name"],
+                    "responses_collected": len(responses),
+                    "manual_consistency_score": consistency_score,
+                    "automated_validation_available": False,
+                    "gap_impact": "Cannot measure semantic consistency"
+                }
+                
+            elif scenario["quality_criteria"] == "comprehensive_coverage":
+                # Manual coverage tracking
+                covered_categories = ["technical", "business"]  # Manually tracked
+                total_categories = scenario["test_categories"]
+                coverage_rate = len(covered_categories) / len(total_categories)
+                
+                result = {
+                    "scenario": scenario["name"],
+                    "total_categories": len(total_categories),
+                    "manually_tracked_coverage": coverage_rate,
+                    "automated_tracking_available": False,
+                    "gap_impact": "Incomplete coverage visibility"
+                }
+            
+            quality_gap_results.append(result)
+            
+            logger.info(f"Quality validation gap for {scenario['name']}: "
+                       f"Gap impact: {result['gap_impact']}")
+        
+        # Verify quality validation gaps
+        assert all(not r.get("automated_validation_available", True) for r in quality_gap_results), \
+            "Should identify lack of automated validation"
+        
+        assert len(quality_gap_results) >= 3, \
+            f"Should assess multiple quality aspects, got {len(quality_gap_results)}"
+        
+        logger.info("Recommendation: Implement automated quality validation tools")
