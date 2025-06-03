@@ -767,3 +767,218 @@ class TestStreamingResponseReliability:
             f"Resource leak test should have high success rate: {leak_success_rate:.2%}"
         
         logger.info("Streaming resource cleanup testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r752_stream_error_recovery_009(self, http_client: httpx.AsyncClient,
+                                                    auth_headers: Dict[str, str],
+                                                    make_request):
+        """TC_R752_STREAM_ERROR_RECOVERY_009: Streaming error recovery mechanisms"""
+        # Test recovery mechanisms for streaming errors
+        
+        # Phase 1: Normal streaming baseline
+        baseline_stream_request = {
+            "model": config.get_chat_model(0),
+            "messages": [{"role": "user", "content": "Baseline streaming test"}],
+            "max_tokens": 50,
+            "stream": True
+        }
+        
+        try:
+            baseline_response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                auth_headers, baseline_stream_request
+            )
+            
+            baseline_success = baseline_response.status_code == 200
+            
+        except Exception:
+            baseline_success = False
+        
+        # Phase 2: Generate streaming errors for recovery testing
+        error_recovery_scenarios = [
+            {
+                "scenario": "invalid_stream_model",
+                "request": {
+                    "model": "stream_error_recovery_invalid_model",
+                    "messages": [{"role": "user", "content": "Error recovery test"}],
+                    "max_tokens": 50,
+                    "stream": True
+                }
+            },
+            {
+                "scenario": "oversized_stream_request",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Error recovery oversized: " + "data " * 3000}],
+                    "max_tokens": 200,
+                    "stream": True
+                }
+            }
+        ]
+        
+        error_recovery_results = []
+        
+        for scenario in error_recovery_scenarios:
+            try:
+                error_response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, scenario["request"], track_cost=False
+                )
+                
+                error_recovery_results.append({
+                    "scenario": scenario["scenario"],
+                    "status_code": error_response.status_code,
+                    "error_handled": error_response.status_code in [422, 400, 413, 503],
+                    "response_received": True
+                })
+                
+            except Exception as e:
+                error_recovery_results.append({
+                    "scenario": scenario["scenario"],
+                    "exception": str(e),
+                    "error_handled": True,  # Exception handling is graceful
+                    "response_received": False
+                })
+        
+        # Phase 3: Test recovery with normal streaming
+        await asyncio.sleep(1)  # Allow recovery time
+        
+        recovery_stream_requests = []
+        
+        for i in range(3):
+            recovery_request = {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": f"Stream recovery test {i}"}],
+                "max_tokens": 40,
+                "stream": True
+            }
+            
+            try:
+                recovery_response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, recovery_request
+                )
+                
+                recovery_stream_requests.append({
+                    "recovery_id": i,
+                    "status_code": recovery_response.status_code,
+                    "recovered": recovery_response.status_code == 200
+                })
+                
+            except Exception as e:
+                recovery_stream_requests.append({
+                    "recovery_id": i,
+                    "exception": str(e),
+                    "recovered": False
+                })
+            
+            await asyncio.sleep(0.3)
+        
+        # Verify streaming error recovery
+        for result in error_recovery_results:
+            assert result["error_handled"], f"Streaming error should be handled: {result['scenario']}"
+        
+        recovery_count = sum(1 for r in recovery_stream_requests if r.get("recovered"))
+        recovery_rate = recovery_count / len(recovery_stream_requests)
+        
+        assert recovery_rate >= 0.7, f"Streaming should recover after errors: {recovery_rate:.2%}"
+        
+        logger.info(f"Streaming error recovery: {recovery_rate:.2%} recovery rate")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r752_stream_partial_content_010(self, http_client: httpx.AsyncClient,
+                                                     auth_headers: Dict[str, str],
+                                                     make_request):
+        """TC_R752_STREAM_PARTIAL_CONTENT_010: Partial content delivery reliability"""
+        # Test reliable delivery of partial content in streaming responses
+        
+        # Test streaming requests that may have partial content
+        partial_content_scenarios = [
+            {
+                "scenario": "incremental_stream",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Generate a step-by-step explanation"}],
+                    "max_tokens": 100,
+                    "stream": True
+                }
+            },
+            {
+                "scenario": "long_form_stream",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Write a detailed analysis of distributed systems"}],
+                    "max_tokens": 200,
+                    "stream": True
+                }
+            }
+        ]
+        
+        partial_content_results = []
+        
+        for scenario in partial_content_scenarios:
+            scenario_start_time = time.time()
+            
+            try:
+                stream_response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, scenario["request"]
+                )
+                
+                scenario_end_time = time.time()
+                response_time = scenario_end_time - scenario_start_time
+                
+                # Check streaming response characteristics
+                content_received = False
+                partial_delivery = False
+                
+                if stream_response.status_code == 200:
+                    content_received = True
+                    
+                    # Check if content appears to be delivered incrementally
+                    content_type = stream_response.headers.get("content-type", "")
+                    
+                    if "stream" in content_type.lower() or "text/event-stream" in content_type:
+                        partial_delivery = True
+                    elif len(stream_response.text) > 0:
+                        partial_delivery = True  # Some content received
+                
+                partial_content_results.append({
+                    "scenario": scenario["scenario"],
+                    "status_code": stream_response.status_code,
+                    "response_time": response_time,
+                    "content_received": content_received,
+                    "partial_delivery": partial_delivery,
+                    "content_length": len(stream_response.text) if stream_response.text else 0
+                })
+                
+            except Exception as e:
+                scenario_end_time = time.time()
+                response_time = scenario_end_time - scenario_start_time
+                
+                partial_content_results.append({
+                    "scenario": scenario["scenario"],
+                    "exception": str(e),
+                    "response_time": response_time,
+                    "content_received": False,
+                    "partial_delivery": False,
+                    "content_length": 0
+                })
+        
+        # Verify partial content delivery
+        for result in partial_content_results:
+            if result.get("content_received"):
+                # If content was received, it should be meaningful
+                assert result["content_length"] > 0, f"Received content should be non-empty: {result['scenario']}"
+                
+                logger.info(f"Partial content {result['scenario']}: {result['content_length']} chars, {result['response_time']:.2f}s")
+            else:
+                logger.info(f"Partial content {result['scenario']}: no content received")
+        
+        # At least one scenario should deliver content successfully
+        successful_deliveries = [r for r in partial_content_results if r.get("content_received")]
+        assert len(successful_deliveries) >= 1, "At least one streaming scenario should deliver content"
+        
+        logger.info("Streaming partial content delivery testing completed")

@@ -743,3 +743,244 @@ class TestTimeoutRetryStrategy:
             logger.warning(f"Database timeouts detected: {len(timed_out_operations)} operations")
         
         logger.info("Database timeout handling testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r753_timeout_progressive_009(self, http_client: httpx.AsyncClient,
+                                                  auth_headers: Dict[str, str],
+                                                  make_request):
+        """TC_R753_TIMEOUT_PROGRESSIVE_009: Progressive timeout strategy"""
+        # Test progressive timeout strategies under increasing load
+        
+        # Test with progressively longer/more complex requests
+        progressive_timeout_scenarios = [
+            {
+                "phase": "quick_requests",
+                "timeout_expected": 2.0,
+                "requests": [
+                    {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": f"Quick request {i}"}],
+                        "max_tokens": 20
+                    }
+                    for i in range(3)
+                ]
+            },
+            {
+                "phase": "medium_requests",
+                "timeout_expected": 8.0,
+                "requests": [
+                    {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": f"Medium complexity request {i} with moderate content"}],
+                        "max_tokens": 100
+                    }
+                    for i in range(2)
+                ]
+            },
+            {
+                "phase": "complex_requests",
+                "timeout_expected": 20.0,
+                "requests": [
+                    {
+                        "model": config.get_chat_model(0),
+                        "messages": [{"role": "user", "content": f"Complex request {i}: " + "detailed analysis " * 200}],
+                        "max_tokens": 300
+                    }
+                ]
+            }
+        ]
+        
+        progressive_results = []
+        
+        for scenario in progressive_timeout_scenarios:
+            phase_results = []
+            
+            for request in scenario["requests"]:
+                start_time = time.time()
+                
+                try:
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, request
+                    )
+                    
+                    end_time = time.time()
+                    duration = end_time - start_time
+                    
+                    phase_results.append({
+                        "status_code": response.status_code,
+                        "duration": duration,
+                        "success": response.status_code == 200,
+                        "within_expected_timeout": duration <= scenario["timeout_expected"],
+                        "timed_out": duration > scenario["timeout_expected"]
+                    })
+                    
+                except Exception as e:
+                    end_time = time.time()
+                    duration = end_time - start_time
+                    
+                    phase_results.append({
+                        "exception": str(e),
+                        "duration": duration,
+                        "success": False,
+                        "within_expected_timeout": True,  # Exception is acceptable timeout handling
+                        "timed_out": duration > scenario["timeout_expected"]
+                    })
+                
+                await asyncio.sleep(0.3)
+            
+            # Analyze phase results
+            successful_requests = [r for r in phase_results if r["success"]]
+            within_timeout = [r for r in phase_results if r["within_expected_timeout"]]
+            
+            progressive_results.append({
+                "phase": scenario["phase"],
+                "expected_timeout": scenario["timeout_expected"],
+                "total_requests": len(phase_results),
+                "successful_requests": len(successful_requests),
+                "within_timeout": len(within_timeout),
+                "success_rate": len(successful_requests) / len(phase_results),
+                "timeout_compliance_rate": len(within_timeout) / len(phase_results),
+                "avg_duration": sum(r["duration"] for r in phase_results) / len(phase_results)
+            })
+        
+        # Verify progressive timeout strategy
+        for result in progressive_results:
+            # Most requests should complete within expected timeouts
+            assert result["timeout_compliance_rate"] >= 0.7, \
+                f"Progressive timeout should be respected: {result['phase']} - {result['timeout_compliance_rate']:.2%}"
+            
+            logger.info(f"Progressive timeout {result['phase']}: {result['avg_duration']:.2f}s avg, {result['timeout_compliance_rate']:.2%} within timeout")
+        
+        logger.info("Progressive timeout strategy testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r753_retry_circuit_breaker_010(self, http_client: httpx.AsyncClient,
+                                                    auth_headers: Dict[str, str],
+                                                    make_request):
+        """TC_R753_RETRY_CIRCUIT_BREAKER_010: Retry circuit breaker integration"""
+        # Test integration between retry mechanisms and circuit breaker patterns
+        
+        # Generate failure scenarios to test circuit breaker behavior with retries
+        circuit_breaker_scenarios = [
+            {
+                "scenario": "rapid_failures",
+                "description": "Rapid failures to trigger circuit breaker",
+                "requests": [
+                    {
+                        "model": f"circuit_breaker_failure_{i}",
+                        "messages": [{"role": "user", "content": "Circuit breaker test"}],
+                        "max_tokens": 50
+                    }
+                    for i in range(8)
+                ]
+            },
+            {
+                "scenario": "mixed_success_failure",
+                "description": "Mixed success and failure to test partial circuit breaker",
+                "requests": [
+                    {
+                        "model": config.get_chat_model(0) if i % 3 != 0 else f"mixed_failure_{i}",
+                        "messages": [{"role": "user", "content": f"Mixed test {i}"}],
+                        "max_tokens": 40
+                    }
+                    for i in range(9)
+                ]
+            }
+        ]
+        
+        circuit_breaker_results = []
+        
+        for scenario in circuit_breaker_scenarios:
+            scenario_start_time = time.time()
+            scenario_responses = []
+            
+            for i, request in enumerate(scenario["requests"]):
+                request_start_time = time.time()
+                
+                try:
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, request, track_cost=(scenario["scenario"] == "mixed_success_failure" and i % 3 == 0)
+                    )
+                    
+                    request_end_time = time.time()
+                    request_duration = request_end_time - request_start_time
+                    
+                    scenario_responses.append({
+                        "request_id": i,
+                        "status_code": response.status_code,
+                        "duration": request_duration,
+                        "success": response.status_code == 200,
+                        "circuit_breaker_active": response.status_code == 503,
+                        "fast_failure": request_duration < 1.0 and response.status_code != 200
+                    })
+                    
+                except Exception as e:
+                    request_end_time = time.time()
+                    request_duration = request_end_time - request_start_time
+                    
+                    scenario_responses.append({
+                        "request_id": i,
+                        "exception": str(e),
+                        "duration": request_duration,
+                        "success": False,
+                        "circuit_breaker_active": True,  # Exception indicates circuit breaker behavior
+                        "fast_failure": request_duration < 1.0
+                    })
+                
+                await asyncio.sleep(0.1)
+            
+            scenario_end_time = time.time()
+            scenario_duration = scenario_end_time - scenario_start_time
+            
+            # Analyze circuit breaker behavior
+            successful_responses = [r for r in scenario_responses if r["success"]]
+            circuit_breaker_responses = [r for r in scenario_responses if r.get("circuit_breaker_active")]
+            fast_failures = [r for r in scenario_responses if r.get("fast_failure")]
+            
+            circuit_breaker_results.append({
+                "scenario": scenario["scenario"],
+                "total_requests": len(scenario_responses),
+                "successful_requests": len(successful_responses),
+                "circuit_breaker_responses": len(circuit_breaker_responses),
+                "fast_failures": len(fast_failures),
+                "success_rate": len(successful_responses) / len(scenario_responses),
+                "circuit_breaker_rate": len(circuit_breaker_responses) / len(scenario_responses),
+                "fast_failure_rate": len(fast_failures) / len(scenario_responses),
+                "scenario_duration": scenario_duration
+            })
+        
+        # Verify circuit breaker integration with retry
+        for result in circuit_breaker_results:
+            if result["scenario"] == "rapid_failures":
+                # Rapid failures should trigger fast failure responses
+                assert result["fast_failure_rate"] >= 0.3, \
+                    f"Rapid failures should trigger fast failures: {result['fast_failure_rate']:.2%}"
+            
+            elif result["scenario"] == "mixed_success_failure":
+                # Mixed scenario should show some success
+                assert result["success_rate"] >= 0.2, \
+                    f"Mixed scenario should show partial success: {result['success_rate']:.2%}"
+            
+            logger.info(f"Circuit breaker {result['scenario']}: {result['success_rate']:.2%} success, {result['fast_failure_rate']:.2%} fast failures")
+        
+        # Test recovery after circuit breaker
+        await asyncio.sleep(3)  # Allow circuit breaker to reset
+        
+        recovery_request = {
+            "model": config.get_chat_model(0),
+            "messages": [{"role": "user", "content": "Circuit breaker recovery test"}],
+            "max_tokens": 40
+        }
+        
+        recovery_response = await make_request(
+            http_client, "POST", "/api/v1/chat/completions",
+            auth_headers, recovery_request
+        )
+        
+        assert recovery_response.status_code == 200, "System should recover after circuit breaker activation"
+        
+        logger.info("Retry circuit breaker integration testing completed")

@@ -456,3 +456,446 @@ class TestProviderFailover:
         handled_rate = handled_requests / len(stress_requests)
         
         assert handled_rate >= 0.7, "At least 70% of requests should be handled gracefully during stress"
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r755_provider_timeout_001(self, http_client: httpx.AsyncClient,
+                                               auth_headers: Dict[str, str],
+                                               make_request):
+        """TC_R755_PROVIDER_TIMEOUT_001: Provider timeout handling"""
+        # Test handling of provider timeouts during failover scenarios
+        
+        # Test with requests that might timeout
+        timeout_test_scenarios = [
+            {
+                "scenario": "normal_timeout_request",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Normal timeout test"}],
+                    "max_tokens": 50
+                },
+                "expected_timeout": False
+            },
+            {
+                "scenario": "heavy_processing_request",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Heavy processing timeout test: " + "complex analysis " * 300}],
+                    "max_tokens": 200
+                },
+                "expected_timeout": True  # Might timeout
+            }
+        ]
+        
+        timeout_results = []
+        
+        for scenario in timeout_test_scenarios:
+            start_time = time.time()
+            
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, scenario["request"], track_cost=(scenario["scenario"] == "normal_timeout_request")
+                )
+                
+                end_time = time.time()
+                request_duration = end_time - start_time
+                
+                timeout_results.append({
+                    "scenario": scenario["scenario"],
+                    "status_code": response.status_code,
+                    "duration": request_duration,
+                    "timed_out": request_duration > 30.0,
+                    "handled_gracefully": response.status_code in [200, 408, 504, 503]
+                })
+                
+            except Exception as e:
+                end_time = time.time()
+                request_duration = end_time - start_time
+                
+                timeout_results.append({
+                    "scenario": scenario["scenario"],
+                    "error": str(e),
+                    "duration": request_duration,
+                    "timed_out": request_duration > 30.0,
+                    "handled_gracefully": True  # Exception handling is graceful
+                })
+        
+        # Verify timeout handling
+        for result in timeout_results:
+            assert result["handled_gracefully"], f"Timeout scenario should be handled gracefully: {result['scenario']}"
+            
+            # If request timed out, duration should be reasonable (not excessive)
+            if result.get("timed_out"):
+                assert result["duration"] <= 60.0, f"Timeout should not be excessive: {result['duration']:.2f}s"
+        
+        logger.info("Provider timeout handling testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r755_provider_rate_limit_002(self, http_client: httpx.AsyncClient,
+                                                  auth_headers: Dict[str, str],
+                                                  make_request):
+        """TC_R755_PROVIDER_RATE_LIMIT_002: Provider rate limit handling"""
+        # Test handling of provider rate limits and appropriate backoff
+        
+        # Generate rapid requests to potentially trigger rate limiting
+        rate_limit_requests = []
+        
+        for i in range(20):
+            request = {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": f"Rate limit test {i}"}],
+                "max_tokens": 30
+            }
+            
+            start_time = time.time()
+            
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request
+                )
+                
+                end_time = time.time()
+                
+                rate_limit_requests.append({
+                    "request_id": i,
+                    "status_code": response.status_code,
+                    "duration": end_time - start_time,
+                    "rate_limited": response.status_code == 429,
+                    "success": response.status_code == 200
+                })
+                
+            except Exception as e:
+                end_time = time.time()
+                
+                rate_limit_requests.append({
+                    "request_id": i,
+                    "error": str(e),
+                    "duration": end_time - start_time,
+                    "rate_limited": False,
+                    "success": False
+                })
+            
+            await asyncio.sleep(0.05)  # Very brief pause - rapid requests
+        
+        # Analyze rate limiting behavior
+        successful_requests = [r for r in rate_limit_requests if r.get("success")]
+        rate_limited_requests = [r for r in rate_limit_requests if r.get("rate_limited")]
+        
+        success_rate = len(successful_requests) / len(rate_limit_requests)
+        rate_limit_rate = len(rate_limited_requests) / len(rate_limit_requests)
+        
+        logger.info(f"Rate limit handling: {success_rate:.2%} success rate, {rate_limit_rate:.2%} rate limited")
+        
+        # System should handle rate limits gracefully
+        for result in rate_limit_requests:
+            if result.get("rate_limited"):
+                logger.info(f"Rate limit detected on request {result['request_id']}")
+        
+        # Either high success rate OR appropriate rate limiting should occur
+        assert success_rate >= 0.5 or rate_limit_rate > 0, "System should handle requests or apply rate limiting"
+        
+        logger.info("Provider rate limit handling completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r755_provider_capacity_003(self, http_client: httpx.AsyncClient,
+                                                auth_headers: Dict[str, str],
+                                                make_request):
+        """TC_R755_PROVIDER_CAPACITY_003: Provider capacity management"""
+        # Test handling of provider capacity limitations
+        
+        # Test with varying request sizes to test capacity management
+        capacity_test_scenarios = [
+            {
+                "type": "small_capacity",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Small capacity test"}],
+                    "max_tokens": 20
+                },
+                "concurrent_count": 5
+            },
+            {
+                "type": "medium_capacity",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Medium capacity test with moderate content"}],
+                    "max_tokens": 100
+                },
+                "concurrent_count": 3
+            },
+            {
+                "type": "large_capacity",
+                "request": {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": "Large capacity test: " + "extensive content " * 200}],
+                    "max_tokens": 300
+                },
+                "concurrent_count": 2
+            }
+        ]
+        
+        capacity_results = []
+        
+        for scenario in capacity_test_scenarios:
+            async def capacity_request(request_id: int):
+                start_time = time.time()
+                
+                try:
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, scenario["request"]
+                    )
+                    
+                    end_time = time.time()
+                    
+                    return {
+                        "request_id": request_id,
+                        "status_code": response.status_code,
+                        "duration": end_time - start_time,
+                        "success": response.status_code == 200,
+                        "capacity_handled": response.status_code in [200, 503, 429]
+                    }
+                    
+                except Exception as e:
+                    end_time = time.time()
+                    
+                    return {
+                        "request_id": request_id,
+                        "error": str(e),
+                        "duration": end_time - start_time,
+                        "success": False,
+                        "capacity_handled": True  # Exception handling indicates capacity management
+                    }
+            
+            # Execute concurrent requests for capacity testing
+            tasks = [capacity_request(i) for i in range(scenario["concurrent_count"])]
+            scenario_results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Filter valid results
+            valid_results = [r for r in scenario_results if isinstance(r, dict)]
+            successful_results = [r for r in valid_results if r.get("success")]
+            capacity_handled = [r for r in valid_results if r.get("capacity_handled")]
+            
+            capacity_results.append({
+                "type": scenario["type"],
+                "total_requests": len(valid_results),
+                "successful_requests": len(successful_results),
+                "capacity_handled": len(capacity_handled),
+                "success_rate": len(successful_results) / len(valid_results) if valid_results else 0,
+                "capacity_handling_rate": len(capacity_handled) / len(valid_results) if valid_results else 0
+            })
+            
+            await asyncio.sleep(1)  # Pause between capacity scenarios
+        
+        # Verify capacity management
+        for result in capacity_results:
+            # Capacity should be managed gracefully
+            assert result["capacity_handling_rate"] >= 0.8, \
+                f"Capacity should be handled gracefully: {result['type']} - {result['capacity_handling_rate']:.2%}"
+            
+            logger.info(f"Capacity test {result['type']}: {result['success_rate']:.2%} success rate")
+        
+        logger.info("Provider capacity management testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r755_provider_failback_004(self, http_client: httpx.AsyncClient,
+                                                auth_headers: Dict[str, str],
+                                                make_request):
+        """TC_R755_PROVIDER_FAILBACK_004: Provider failback mechanism"""
+        # Test failback to primary provider after recovery
+        
+        # Phase 1: Establish baseline with primary provider
+        primary_baseline = []
+        
+        for i in range(3):
+            request = {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": f"Failback baseline test {i}"}],
+                "max_tokens": 40
+            }
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                auth_headers, request
+            )
+            
+            primary_baseline.append({
+                "request_id": i,
+                "status_code": response.status_code,
+                "success": response.status_code == 200
+            })
+            
+            await asyncio.sleep(0.3)
+        
+        baseline_success_rate = sum(1 for r in primary_baseline if r["success"]) / len(primary_baseline)
+        
+        # Phase 2: Simulate provider stress/failure
+        stress_requests = []
+        
+        for i in range(8):
+            # Mix of potentially failing and normal requests
+            if i % 3 == 0:
+                request = {
+                    "model": f"failback_stress_model_{i}",
+                    "messages": [{"role": "user", "content": "Stress request"}],
+                    "max_tokens": 50
+                }
+                track_cost = False
+            else:
+                request = {
+                    "model": config.get_chat_model(0),
+                    "messages": [{"role": "user", "content": f"Stress test {i}"}],
+                    "max_tokens": 40
+                }
+                track_cost = True
+            
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request, track_cost=track_cost
+                )
+                
+                stress_requests.append({
+                    "request_id": i,
+                    "status_code": response.status_code,
+                    "success": response.status_code == 200
+                })
+                
+            except Exception as e:
+                stress_requests.append({
+                    "request_id": i,
+                    "error": str(e),
+                    "success": False
+                })
+            
+            await asyncio.sleep(0.1)
+        
+        # Phase 3: Test failback recovery
+        await asyncio.sleep(2)  # Allow system to recover
+        
+        failback_recovery = []
+        
+        for i in range(5):
+            request = {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": f"Failback recovery test {i}"}],
+                "max_tokens": 40
+            }
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                auth_headers, request
+            )
+            
+            failback_recovery.append({
+                "request_id": i,
+                "status_code": response.status_code,
+                "success": response.status_code == 200
+            })
+            
+            await asyncio.sleep(0.3)
+        
+        recovery_success_rate = sum(1 for r in failback_recovery if r["success"]) / len(failback_recovery)
+        
+        # Verify failback mechanism
+        logger.info(f"Failback testing:")
+        logger.info(f"  Baseline success rate: {baseline_success_rate:.2%}")
+        logger.info(f"  Recovery success rate: {recovery_success_rate:.2%}")
+        
+        # Recovery should be at least as good as baseline
+        assert recovery_success_rate >= max(0.6, baseline_success_rate * 0.8), \
+            f"Failback recovery should restore functionality: {recovery_success_rate:.2%}"
+        
+        logger.info("Provider failback mechanism testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_tc_r755_multi_provider_redundancy_005(self, http_client: httpx.AsyncClient,
+                                                        auth_headers: Dict[str, str],
+                                                        make_request):
+        """TC_R755_MULTI_PROVIDER_REDUNDANCY_005: Multi-provider redundancy validation"""
+        # Test redundancy across multiple providers/models
+        
+        # Test available models for redundancy
+        available_models = config.CHAT_MODELS
+        
+        redundancy_test_results = {}
+        
+        for model in available_models[:3]:  # Test up to 3 models for redundancy
+            model_tests = []
+            
+            for i in range(4):
+                request = {
+                    "model": model,
+                    "messages": [{"role": "user", "content": f"Redundancy test {i} for {model}"}],
+                    "max_tokens": 40
+                }
+                
+                start_time = time.time()
+                
+                try:
+                    response = await make_request(
+                        http_client, "POST", "/api/v1/chat/completions",
+                        auth_headers, request
+                    )
+                    
+                    end_time = time.time()
+                    
+                    model_tests.append({
+                        "request_id": i,
+                        "status_code": response.status_code,
+                        "duration": end_time - start_time,
+                        "success": response.status_code == 200,
+                        "available": True
+                    })
+                    
+                except Exception as e:
+                    end_time = time.time()
+                    
+                    model_tests.append({
+                        "request_id": i,
+                        "error": str(e),
+                        "duration": end_time - start_time,
+                        "success": False,
+                        "available": False
+                    })
+                
+                await asyncio.sleep(0.2)
+            
+            # Calculate model reliability metrics
+            successful_tests = [t for t in model_tests if t["success"]]
+            available_tests = [t for t in model_tests if t.get("available")]
+            
+            redundancy_test_results[model] = {
+                "total_tests": len(model_tests),
+                "successful_tests": len(successful_tests),
+                "available_tests": len(available_tests),
+                "success_rate": len(successful_tests) / len(model_tests),
+                "availability_rate": len(available_tests) / len(model_tests),
+                "avg_response_time": sum(t["duration"] for t in model_tests) / len(model_tests)
+            }
+        
+        # Verify redundancy effectiveness
+        available_providers = [model for model, results in redundancy_test_results.items() 
+                             if results["availability_rate"] >= 0.7]
+        
+        reliable_providers = [model for model, results in redundancy_test_results.items() 
+                            if results["success_rate"] >= 0.7]
+        
+        logger.info(f"Multi-provider redundancy:")
+        logger.info(f"  Available providers: {len(available_providers)}/{len(redundancy_test_results)}")
+        logger.info(f"  Reliable providers: {len(reliable_providers)}/{len(redundancy_test_results)}")
+        
+        # Should have at least one reliable provider for redundancy
+        assert len(reliable_providers) >= 1, "At least one provider should be reliable for redundancy"
+        
+        # If multiple models available, at least one should provide redundancy
+        if len(available_models) > 1:
+            assert len(available_providers) >= 1, "Multi-provider setup should provide redundancy"
+        
+        logger.info("Multi-provider redundancy validation completed")

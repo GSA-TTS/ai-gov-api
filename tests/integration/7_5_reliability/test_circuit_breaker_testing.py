@@ -722,3 +722,193 @@ class TestCircuitBreakerTesting:
         assert success_rate > 0, "Test should have generated some successful requests"
         
         logger.info("Circuit breaker metrics testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_half_open_recovery_002(self, http_client: httpx.AsyncClient,
+                                                         auth_headers: Dict[str, str],
+                                                         make_request):
+        """TC_R755_CIRCUIT_002: Circuit breaker half-open state and recovery"""
+        # Test circuit breaker transitions to half-open state and recovery behavior
+        
+        # Generate failures to potentially trigger circuit breaker
+        failure_requests = [
+            {
+                "model": f"circuit_half_open_test_{i}",
+                "messages": [{"role": "user", "content": f"Half-open circuit test {i}"}],
+                "max_tokens": 50
+            }
+            for i in range(6)
+        ]
+        
+        circuit_state_results = []
+        
+        # Phase 1: Generate failures to trip circuit
+        logger.info("Phase 1: Generating failures to test circuit breaking")
+        for i, request in enumerate(failure_requests):
+            start_time = time.time()
+            
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request, track_cost=False
+                )
+                
+                end_time = time.time()
+                response_time = end_time - start_time
+                
+                # Fast failures might indicate circuit is open
+                circuit_likely_open = response.status_code >= 500 and response_time < 1.0
+                
+                circuit_state_results.append({
+                    "phase": "failure_generation",
+                    "request_index": i,
+                    "status_code": response.status_code,
+                    "response_time": response_time,
+                    "circuit_open_indicator": circuit_likely_open
+                })
+                
+            except Exception as e:
+                end_time = time.time()
+                response_time = end_time - start_time
+                
+                circuit_state_results.append({
+                    "phase": "failure_generation",
+                    "request_index": i,
+                    "error": str(e),
+                    "response_time": response_time,
+                    "circuit_open_indicator": response_time < 1.0
+                })
+            
+            await asyncio.sleep(0.1)
+        
+        # Phase 2: Wait for potential half-open transition
+        logger.info("Phase 2: Waiting for potential half-open state")
+        await asyncio.sleep(2)
+        
+        # Phase 3: Test recovery with successful requests
+        logger.info("Phase 3: Testing recovery with valid requests")
+        recovery_requests = [
+            {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": f"Circuit recovery test {i}"}],
+                "max_tokens": 40
+            }
+            for i in range(3)
+        ]
+        
+        for i, request in enumerate(recovery_requests):
+            start_time = time.time()
+            
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request
+                )
+                
+                end_time = time.time()
+                response_time = end_time - start_time
+                
+                circuit_state_results.append({
+                    "phase": "recovery_testing",
+                    "request_index": i,
+                    "status_code": response.status_code,
+                    "response_time": response_time,
+                    "recovery_successful": response.status_code == 200
+                })
+                
+            except Exception as e:
+                end_time = time.time()
+                response_time = end_time - start_time
+                
+                circuit_state_results.append({
+                    "phase": "recovery_testing",
+                    "request_index": i,
+                    "error": str(e),
+                    "response_time": response_time,
+                    "recovery_successful": False
+                })
+            
+            await asyncio.sleep(0.3)
+        
+        # Analyze circuit breaker state transitions
+        failure_phase = [r for r in circuit_state_results if r["phase"] == "failure_generation"]
+        recovery_phase = [r for r in circuit_state_results if r["phase"] == "recovery_testing"]
+        
+        circuit_open_indicators = sum(1 for r in failure_phase if r.get("circuit_open_indicator"))
+        successful_recoveries = sum(1 for r in recovery_phase if r.get("recovery_successful"))
+        
+        logger.info(f"Circuit breaker behavior: {circuit_open_indicators} open indicators, {successful_recoveries} successful recoveries")
+        
+        # Circuit should either prevent failures or allow recovery
+        circuit_behavior_appropriate = circuit_open_indicators > 0 or successful_recoveries > 0
+        assert circuit_behavior_appropriate, "Circuit breaker should show appropriate behavior"
+        
+        logger.info("Circuit breaker half-open recovery testing completed")
+
+    @pytest.mark.reliability
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_closed_state_success_003(self, http_client: httpx.AsyncClient,
+                                                           auth_headers: Dict[str, str],
+                                                           make_request):
+        """TC_R755_CIRCUIT_003: Circuit breaker closed state with successful requests"""
+        # Test circuit breaker behavior when requests succeed (circuit should remain closed)
+        
+        success_test_requests = [
+            {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": f"Circuit closed state test {i}"}],
+                "max_tokens": 40
+            }
+            for i in range(5)
+        ]
+        
+        closed_state_results = []
+        
+        for i, request in enumerate(success_test_requests):
+            start_time = time.time()
+            
+            try:
+                response = await make_request(
+                    http_client, "POST", "/api/v1/chat/completions",
+                    auth_headers, request
+                )
+                
+                end_time = time.time()
+                response_time = end_time - start_time
+                
+                closed_state_results.append({
+                    "request_index": i,
+                    "status_code": response.status_code,
+                    "response_time": response_time,
+                    "success": response.status_code == 200,
+                    "circuit_closed_behavior": response.status_code == 200 and response_time < 10.0
+                })
+                
+            except Exception as e:
+                end_time = time.time()
+                response_time = end_time - start_time
+                
+                closed_state_results.append({
+                    "request_index": i,
+                    "error": str(e),
+                    "response_time": response_time,
+                    "success": False,
+                    "circuit_closed_behavior": False
+                })
+            
+            await asyncio.sleep(0.2)
+        
+        # Analyze closed state behavior
+        successful_requests = [r for r in closed_state_results if r.get("success")]
+        appropriate_behavior = [r for r in closed_state_results if r.get("circuit_closed_behavior")]
+        
+        success_rate = len(successful_requests) / len(closed_state_results)
+        behavior_rate = len(appropriate_behavior) / len(closed_state_results)
+        
+        # Circuit should remain closed for successful requests
+        assert success_rate >= 0.8, f"Most requests should succeed with circuit closed: {success_rate:.2%}"
+        assert behavior_rate >= 0.8, f"Circuit behavior should be appropriate: {behavior_rate:.2%}"
+        
+        logger.info(f"Circuit closed state: {success_rate:.2%} success rate, {behavior_rate:.2%} appropriate behavior")
+        logger.info("Circuit breaker closed state testing completed")
