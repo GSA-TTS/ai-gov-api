@@ -43,7 +43,8 @@ def _(part: OA.ImageContentPart) -> ImagePart:
 def _(part: OA.FileContentPart) -> FilePart:
     return FilePart(
         bytes=part.file.file_data,
-        mime_type="application/pdf" # TODO determin mime type for file
+        mime_type="application/pdf", # TODO determin mime type for file
+        name=part.file.file_name
         )
 
 ## Handle Messages

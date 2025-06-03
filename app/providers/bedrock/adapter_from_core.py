@@ -98,7 +98,7 @@ def _(part: FilePart) -> br.ContentDocumentBlock:
     return br.ContentDocumentBlock(
         document=br.DocumentPayload(
             format="pdf",
-            name="",
+            name=part.name or "Untitled",
             source=br.DocumentSource(bytes=part.bytes_)
         )
     )
