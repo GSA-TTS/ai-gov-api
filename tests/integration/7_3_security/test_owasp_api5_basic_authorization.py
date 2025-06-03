@@ -1,4 +1,4 @@
-# Section 7.3 - OWASP API5:2023 Broken Function Level Authorization Tests
+# Section 7.3 - OWASP API5:2023 Broken Function Level Authorization Tests - Basic Tests
 # Based on: docs/test_design_n_planning/Testcases_7_3_Security Testing/Test Cases for API5_2023 - Broken Function Level Authorization.md
 
 import pytest
@@ -608,3 +608,167 @@ class TestOWASPAPI5FunctionAuthorization:
                     f"{test['scope']} scope should not access {func['endpoint']}"
         
         logger.info("API5_SCOPE_VERIFICATION_001: Scope-based function authorization validated")
+
+
+class TestBFLALLMFunctionAuthorization:
+    """LLM Function Authorization tests per design document"""
+    
+    @pytest.mark.security
+    @pytest.mark.asyncio
+    async def test_bfla_llm_inference_001(self, http_client: httpx.AsyncClient,
+                                         auth_headers: Dict[str, str],
+                                         make_request):
+        """BFLA_LLM_INFERENCE_001: Chat completions with insufficient scopes"""
+        if not config.ENABLE_SECURITY_TESTS:
+            pytest.skip("Security tests disabled")
+        
+        # Test chat completions with various insufficient scopes
+        insufficient_scope_scenarios = [
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_EMBEDDING_API_KEY}"},
+                "description": "API key with only models:embedding scope"
+            },
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_ADMIN_API_KEY}"},
+                "description": "API key with only admin scope"
+            },
+            {
+                "headers": {"Authorization": "Bearer invalid_key_no_scopes"},
+                "description": "API key with no relevant scopes"
+            },
+            {
+                "headers": {"Authorization": "Bearer custom_invalid_scope_key"},
+                "description": "API key with custom/invalid scopes"
+            }
+        ]
+        
+        for scenario in insufficient_scope_scenarios:
+            request_data = {
+                "model": config.get_chat_model(0),
+                "messages": [{"role": "user", "content": "Test insufficient scope"}],
+                "max_tokens": 50
+            }
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/chat/completions",
+                scenario["headers"], request_data, track_cost=False
+            )
+            
+            # Should fail with 403 Forbidden or 401 Unauthorized
+            assert response.status_code in [401, 403], \
+                f"Should deny access for {scenario['description']}"
+            
+            if response.status_code == 403:
+                response_data = response.json()
+                assert "detail" in response_data
+                assert response_data["detail"] == "Not Authorized" or "authorized" in response_data["detail"].lower()
+            
+            logger.info(f"BFLA_LLM_INFERENCE_001: Properly denied {scenario['description']}")
+    
+    @pytest.mark.security
+    @pytest.mark.asyncio
+    async def test_bfla_llm_embedding_001(self, http_client: httpx.AsyncClient,
+                                         auth_headers: Dict[str, str],
+                                         make_request):
+        """BFLA_LLM_EMBEDDING_001: Embeddings with insufficient scopes"""
+        if not config.ENABLE_SECURITY_TESTS:
+            pytest.skip("Security tests disabled")
+        
+        # Test embeddings with various insufficient scopes
+        insufficient_scope_scenarios = [
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "description": "API key with only models:inference scope"
+            },
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_ADMIN_API_KEY}"},
+                "description": "API key with only admin scope"
+            },
+            {
+                "headers": {"Authorization": "Bearer no_model_scopes_key"},
+                "description": "API key with no model-related scopes"
+            },
+            {
+                "headers": {"Authorization": "Bearer malformed_scope_key"},
+                "description": "API key with malformed scope values"
+            }
+        ]
+        
+        for scenario in insufficient_scope_scenarios:
+            request_data = {
+                "model": config.get_embedding_model(0),
+                "input": "Test insufficient embedding scope"
+            }
+            
+            response = await make_request(
+                http_client, "POST", "/api/v1/embeddings",
+                scenario["headers"], request_data, track_cost=False
+            )
+            
+            # Should fail with 403 Forbidden or 401 Unauthorized
+            assert response.status_code in [401, 403], \
+                f"Should deny embedding access for {scenario['description']}"
+            
+            if response.status_code == 403:
+                response_data = response.json()
+                assert "detail" in response_data
+                assert response_data["detail"] == "Not Authorized" or "authorized" in response_data["detail"].lower()
+            
+            logger.info(f"BFLA_LLM_EMBEDDING_001: Properly denied {scenario['description']}")
+    
+    @pytest.mark.security
+    @pytest.mark.asyncio
+    async def test_bfla_models_list_001(self, http_client: httpx.AsyncClient,
+                                       auth_headers: Dict[str, str],
+                                       make_request):
+        """BFLA_MODELS_LIST_001: Models endpoint accessibility and filtering"""
+        if not config.ENABLE_SECURITY_TESTS:
+            pytest.skip("Security tests disabled")
+        
+        # Test models endpoint with various scopes
+        scope_scenarios = [
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "description": "API key with models:inference scope"
+            },
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_EMBEDDING_API_KEY}"},
+                "description": "API key with models:embedding scope"
+            },
+            {
+                "headers": {"Authorization": f"Bearer {config.TEST_ADMIN_API_KEY}"},
+                "description": "API key with admin scope"
+            },
+            {
+                "headers": {"Authorization": "Bearer users_read_only_key"},
+                "description": "API key with no model-related scopes"
+            }
+        ]
+        
+        for scenario in scope_scenarios:
+            response = await make_request(
+                http_client, "GET", "/api/v1/models",
+                scenario["headers"], track_cost=False
+            )
+            
+            if "users_read_only" in scenario["description"]:
+                # Should be denied for keys without model scopes
+                assert response.status_code in [401, 403], \
+                    f"Should deny models access for {scenario['description']}"
+            else:
+                # Should succeed for valid API keys
+                assert response.status_code == 200, \
+                    f"Should allow models access for {scenario['description']}"
+                
+                response_data = response.json()
+                assert "data" in response_data
+                assert isinstance(response_data["data"], list)
+                
+                # Verify model list doesn't expose unauthorized information
+                response_text = str(response_data).lower()
+                unauthorized_info = ["password", "secret", "internal", "debug", "admin"]
+                for info in unauthorized_info:
+                    assert info not in response_text, \
+                        f"Models list should not expose {info} for {scenario['description']}"
+            
+            logger.info(f"BFLA_MODELS_LIST_001: Models access validated for {scenario['description']}")

@@ -548,3 +548,6 @@ class TestSupplyChainSecurity:
         assert injection_response.status_code == 200
         
         logger.info("SUPPLY_CHAIN_UPDATE_001: Update security validated")
+
+
+# Advanced Supply Chain Security tests moved to test_supply_chain_advanced.py to maintain file size under 900 lines

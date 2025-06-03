@@ -1,4 +1,4 @@
-# Section 7.3 - Multi-Modal Content Security Tests
+# Section 7.3 - Multi-Modal Content Security Tests - Basic Security
 # Based on: docs/test_design_n_planning/Testcases_7_3_Security Testing/Test Cases for Multi-Modal Content Security.md
 
 import pytest
@@ -21,8 +21,8 @@ from fixtures.multimodal_fixtures import MultiModalFixtures
 from utils.security_validators import SecurityValidator
 
 
-class TestMultiModalSecurity:
-    """Comprehensive multi-modal content security tests"""
+class TestMultiModalBasicSecurity:
+    """Basic multi-modal content security tests"""
     
     @pytest.mark.security
     @pytest.mark.asyncio

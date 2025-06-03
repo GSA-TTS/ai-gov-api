@@ -523,3 +523,11 @@ class TestDatabaseSecurity:
         assert response.status_code == 200
         
         logger.info("DB_AUDIT_001: Database audit trail validated")
+
+
+# Advanced Database Security tests moved to separate files to maintain file size under 900 lines:
+# - test_database_advanced_security.py: DBSEC_SESSION_HIJACK_001, DBSEC_CONN_POOL_EXHAUST_001, 
+#   DBSEC_TXN_AUTH_ROLLBACK_001, DBSEC_TXN_BILLING_CONCURRENCY_001, DBSEC_TXN_USER_CREATE_UNIQUE_001,
+#   DBSEC_SQLI_APIKEY_LOOKUP_001, DBSEC_SQLI_USER_EMAIL_PARAM_001, DBSEC_DATA_CONSISTENCY_KEY_DELETION_001
+# - test_database_advanced_security_2.py: DBSEC_CONNECTION_LEAK_001, DBSEC_ISOLATION_LEVEL_001,
+#   DBSEC_QUERY_TIMEOUT_001, DBSEC_CONCURRENT_MODIFICATION_001, DBSEC_DEADLOCK_DETECTION_001, DBSEC_BACKUP_RECOVERY_001

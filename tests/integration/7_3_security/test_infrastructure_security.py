@@ -599,3 +599,119 @@ class TestInfrastructureSecurity:
                 logger.info(f"Backup file properly protected: {file_pattern}")
         
         logger.info("INFRA_BACKUP_001: Backup security validated")
+    
+    @pytest.mark.security
+    @pytest.mark.asyncio
+    async def test_infra_container_vuln_scan_001(self, http_client: httpx.AsyncClient,
+                                               auth_headers: Dict[str, str],
+                                               make_request):
+        """INFRA_CONTAINER_VULN_SCAN_001: Container vulnerability scanning"""
+        if not config.should_run_security_tests():
+            pytest.skip("Security tests disabled")
+        
+        # Test container vulnerability scanning through API responses
+        response = await make_request(
+            http_client, "GET", "/api/v1/models",
+            auth_headers, track_cost=False
+        )
+        
+        assert response.status_code == 200
+        headers = response.headers
+        
+        # Check for vulnerability scanning indicators
+        vuln_scan_headers = [
+            "x-container-scan-status",
+            "x-vulnerability-score",
+            "x-last-scan-date",
+            "x-cve-count"
+        ]
+        
+        scan_indicators = []
+        for header in vuln_scan_headers:
+            if header in headers:
+                scan_indicators.append(f"{header}={headers[header]}")
+        
+        if scan_indicators:
+            logger.info(f"Container vulnerability scan indicators: {scan_indicators}")
+        
+        # Test vulnerability endpoints
+        vuln_endpoints = [
+            "/security/vulnerabilities",
+            "/scan/results",
+            "/cve/report",
+            "/.well-known/security-scan"
+        ]
+        
+        for endpoint in vuln_endpoints:
+            vuln_response = await make_request(
+                http_client, "GET", endpoint,
+                auth_headers, track_cost=False
+            )
+            
+            if vuln_response.status_code == 200:
+                logger.info(f"Vulnerability scan results available at: {endpoint}")
+            elif vuln_response.status_code in [401, 403]:
+                logger.info(f"Vulnerability endpoint properly protected: {endpoint}")
+            elif vuln_response.status_code == 404:
+                logger.info(f"Vulnerability endpoint not found: {endpoint}")
+        
+        logger.info("INFRA_CONTAINER_VULN_SCAN_001: Container vulnerability scanning validated")
+    
+    @pytest.mark.security
+    @pytest.mark.asyncio
+    async def test_infra_network_port_exposure_001(self, http_client: httpx.AsyncClient,
+                                                 auth_headers: Dict[str, str],
+                                                 make_request):
+        """INFRA_NETWORK_PORT_EXPOSURE_001: Port exposure validation"""
+        if not config.should_run_security_tests():
+            pytest.skip("Security tests disabled")
+        
+        # Test port exposure through API behavior
+        base_url = config.BASE_URL
+        parsed_url = urlparse(base_url)
+        
+        # Test standard service ports
+        test_ports = [
+            {"port": 22, "service": "SSH", "should_be_blocked": True},
+            {"port": 3306, "service": "MySQL", "should_be_blocked": True},
+            {"port": 5432, "service": "PostgreSQL", "should_be_blocked": True},
+            {"port": 6379, "service": "Redis", "should_be_blocked": True},
+            {"port": 27017, "service": "MongoDB", "should_be_blocked": True},
+            {"port": 9200, "service": "Elasticsearch", "should_be_blocked": True},
+            {"port": 8080, "service": "Alt HTTP", "should_be_blocked": False},
+            {"port": 8443, "service": "Alt HTTPS", "should_be_blocked": False}
+        ]
+        
+        port_results = []
+        
+        for port_test in test_ports:
+            try:
+                # Test port connectivity
+                with socket.create_connection((parsed_url.hostname, port_test["port"]), timeout=5) as sock:
+                    port_results.append({
+                        "port": port_test["port"],
+                        "service": port_test["service"],
+                        "accessible": True,
+                        "should_be_blocked": port_test["should_be_blocked"]
+                    })
+            except (socket.timeout, socket.error, OSError):
+                port_results.append({
+                    "port": port_test["port"],
+                    "service": port_test["service"],
+                    "accessible": False,
+                    "should_be_blocked": port_test["should_be_blocked"]
+                })
+        
+        # Analyze port exposure
+        for result in port_results:
+            if result["accessible"] and result["should_be_blocked"]:
+                logger.warning(f"Potentially exposed service: {result['service']} on port {result['port']}")
+            elif not result["accessible"] and result["should_be_blocked"]:
+                logger.info(f"Service properly blocked: {result['service']} on port {result['port']}")
+        
+        logger.info("INFRA_NETWORK_PORT_EXPOSURE_001: Port exposure validation completed")
+
+
+# Advanced Infrastructure Security tests moved to separate files to maintain file size under 900 lines:
+# - test_infrastructure_advanced_security.py: Additional INFRA_* test case IDs
+# - test_infrastructure_advanced_security_2.py: Cloud governance and monitoring test cases

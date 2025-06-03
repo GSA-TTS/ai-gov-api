@@ -415,3 +415,6 @@ class TestCryptographicSecurity:
             logger.warning("Significant timing variance detected - review for side-channels")
         
         logger.info("CRYPTO_SIDECHANNEL_001: Side-channel resistance evaluated")
+
+
+# Advanced Cryptographic Security tests moved to test_cryptographic_advanced.py to maintain file size under 900 lines
