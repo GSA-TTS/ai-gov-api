@@ -15,7 +15,6 @@ from config import config, logger
 from fixtures.security_fixtures import SecurityFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI9InventoryManagementAdvanced:
     """Advanced tests for OWASP API9:2023 - Improper Inventory Management"""
     

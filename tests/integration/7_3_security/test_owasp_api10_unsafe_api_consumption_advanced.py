@@ -17,7 +17,6 @@ from config import config, logger
 from fixtures.security_fixtures import SecurityFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI10UnsafeConsumptionAdvanced:
     """Advanced tests for OWASP API10:2023 - Unsafe Consumption of APIs"""
     

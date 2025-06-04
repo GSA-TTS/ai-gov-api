@@ -19,7 +19,6 @@ from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestAdvancedSupplyChainSecurity:
     """Advanced supply chain security tests matching design document test case IDs"""
     

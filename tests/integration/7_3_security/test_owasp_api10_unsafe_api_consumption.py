@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import config, logger
 
-
 class TestOWASPAPI10UnsafeAPIConsumption:
     """API10:2023 - Unsafe Consumption of APIs (Downstream LLMs) tests"""
     

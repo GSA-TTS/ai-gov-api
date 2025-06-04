@@ -17,7 +17,6 @@ from fixtures.auth_fixtures import AuthFixtures
 from fixtures.security_fixtures import SecurityFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestCrossAgencyDataProtection:
     """Comprehensive cross-agency data protection tests"""
     

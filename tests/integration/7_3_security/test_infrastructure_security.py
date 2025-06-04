@@ -18,7 +18,6 @@ from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestInfrastructureSecurity:
     """Comprehensive infrastructure security and configuration tests"""
     

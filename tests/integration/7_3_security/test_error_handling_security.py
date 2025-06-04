@@ -16,7 +16,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import config, logger
 
-
 class TestValidationErrorInformationDisclosure:
     """Test ValidationError response for internal information disclosure"""
     

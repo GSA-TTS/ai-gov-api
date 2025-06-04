@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import config, logger
 
-
 class TestOWASPAPI7SSRF:
     """API7:2023 - Server Side Request Forgery (SSRF) tests"""
     

@@ -15,7 +15,6 @@ from config import config, logger
 from fixtures.security_fixtures import SecurityFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestLLMModelSecurityAdvanced:
     """Advanced LLM model security tests for information leakage and manipulation"""
     

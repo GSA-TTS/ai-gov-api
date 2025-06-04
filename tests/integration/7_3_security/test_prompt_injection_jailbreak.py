@@ -16,7 +16,6 @@ from fixtures.security_fixtures import SecurityFixtures
 from fixtures.multimodal_fixtures import MultiModalFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestPromptInjectionJailbreak:
     """Advanced jailbreak and framework-level security tests"""
     

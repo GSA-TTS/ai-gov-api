@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import config, logger
 
-
 class TestOWASPAPI6BusinessFlows:
     """API6:2023 - Unrestricted Access to Sensitive Business Flows tests"""
     

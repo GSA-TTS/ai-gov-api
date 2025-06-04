@@ -18,7 +18,6 @@ from fixtures.auth_fixtures import AuthFixtures
 from fixtures.multimodal_fixtures import MultiModalFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestAdvancedMetadataResourceSecurity:
     """Advanced metadata and resource security tests"""
     

@@ -15,7 +15,6 @@ from config import config, logger
 from fixtures.security_fixtures import SecurityFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI3DataExposureAdvanced:
     """Advanced tests for OWASP API3:2023 - Data Exposure"""
     

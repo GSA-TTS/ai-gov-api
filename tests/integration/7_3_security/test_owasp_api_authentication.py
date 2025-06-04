@@ -14,7 +14,6 @@ from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI2Authentication:
     """Test cases for API2:2023 - Broken Authentication"""
     

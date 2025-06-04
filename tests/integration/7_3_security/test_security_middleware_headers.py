@@ -16,7 +16,6 @@ from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestSecurityMiddlewareHeaders:
     """Comprehensive security middleware and HTTP headers tests"""
     

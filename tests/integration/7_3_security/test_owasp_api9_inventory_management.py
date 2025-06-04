@@ -12,7 +12,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import config, logger
 
-
 class TestOWASPAPI9InventoryManagement:
     """API9:2023 - Improper Inventory Management tests"""
     

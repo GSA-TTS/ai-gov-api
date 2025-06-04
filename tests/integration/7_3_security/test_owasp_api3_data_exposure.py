@@ -14,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import config, logger
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI3DataExposure:
     """API3:2023 - Broken Object Property Level Authorization / Excessive Data Exposure tests"""
     

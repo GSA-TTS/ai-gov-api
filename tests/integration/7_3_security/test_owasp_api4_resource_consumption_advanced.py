@@ -17,7 +17,6 @@ from fixtures.security_fixtures import SecurityFixtures
 from fixtures.multimodal_fixtures import MultiModalFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI4ResourceConsumptionAdvanced:
     """Advanced tests for OWASP API4:2023 - Unrestricted Resource Consumption"""
     

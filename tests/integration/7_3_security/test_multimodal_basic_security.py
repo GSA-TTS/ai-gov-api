@@ -20,7 +20,6 @@ from fixtures.auth_fixtures import AuthFixtures
 from fixtures.multimodal_fixtures import MultiModalFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestMultiModalBasicSecurity:
     """Basic multi-modal content security tests"""
     

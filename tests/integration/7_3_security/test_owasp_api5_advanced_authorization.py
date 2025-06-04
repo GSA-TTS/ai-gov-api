@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 
-
 class TestBFLAAdministrativeFunctions:
     """Administrative Function Authorization tests"""
     

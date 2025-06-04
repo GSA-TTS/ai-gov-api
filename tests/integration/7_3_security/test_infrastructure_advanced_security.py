@@ -21,7 +21,6 @@ from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestAdvancedInfrastructureSecurity:
     """Advanced infrastructure security and configuration tests matching design document test case IDs"""
     

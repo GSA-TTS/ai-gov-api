@@ -15,7 +15,6 @@ from config import config, logger
 from fixtures.security_fixtures import SecurityFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestOWASPAPI8SecurityMisconfigurationAdvanced:
     """Advanced security misconfiguration tests (OWASP API8:2023)"""
     

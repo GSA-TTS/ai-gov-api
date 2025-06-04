@@ -19,7 +19,6 @@ from config import config, logger
 from fixtures.auth_fixtures import AuthFixtures
 from utils.security_validators import SecurityValidator
 
-
 class TestAdvancedAuditLoggingSecurity:
     """Advanced audit logging and security monitoring tests matching design document test case IDs"""
     
