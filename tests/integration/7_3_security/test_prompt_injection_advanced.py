@@ -45,7 +45,7 @@ class TestPromptInjectionAdvanced:
         ]
         
         # Get a base64 encoded JPEG image
-        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        test_image_data_uri = multimodal_fixtures.get_base64_image(format_type='JPEG')
         # Extract just the base64 part
         test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
@@ -114,7 +114,7 @@ class TestPromptInjectionAdvanced:
         ]
         
         # Get a base64 encoded JPEG image
-        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        test_image_data_uri = multimodal_fixtures.get_base64_image(format_type='JPEG')
         # Extract just the base64 part
         test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
@@ -175,7 +175,7 @@ class TestPromptInjectionAdvanced:
         ]
         
         # Get a base64 encoded JPEG image
-        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        test_image_data_uri = multimodal_fixtures.get_base64_image(format_type='JPEG')
         # Extract just the base64 part
         test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
@@ -244,7 +244,7 @@ class TestPromptInjectionAdvanced:
         ]
         
         # Get a base64 encoded JPEG image
-        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        test_image_data_uri = multimodal_fixtures.get_base64_image(format_type='JPEG')
         # Extract just the base64 part
         test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         

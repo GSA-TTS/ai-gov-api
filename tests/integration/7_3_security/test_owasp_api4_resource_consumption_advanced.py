@@ -164,7 +164,7 @@ class TestOWASPAPI4ResourceConsumptionAdvanced:
                 # Create multiple images in one request
                 images_content = []
                 for i in range(test_case["image_count"]):
-                    image_data = multimodal_fixtures.get_base64_image(f"test_image_{i}.jpg")
+                    image_data = multimodal_fixtures.get_base64_image(format_type='JPEG')
                     images_content.append({
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
@@ -417,10 +417,10 @@ class TestOWASPAPI4ResourceConsumptionAdvanced:
         
         # Validate concurrent resource handling
         validation_result = security_validator.validate_concurrent_resource_handling(
-            concurrent_requests, valid_responses
+            valid_responses, "concurrent_requests"
         )
         
-        assert validation_result["is_protected"], \
+        assert validation_result["validation_passed"], \
             "Concurrent resource consumption should be protected"
         
         # Analyze response patterns

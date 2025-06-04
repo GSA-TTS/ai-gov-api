@@ -581,11 +581,19 @@ class TestOWASPAPI2AuthenticationAdvanced:
             valid_results = [r for r in concurrent_results if not isinstance(r, Exception)]
             
             # Validate concurrent authentication handling
+            # Determine expected behavior based on key type
+            if test_scenario["key_type"] == "valid":
+                expected_behavior = "all_succeed"
+            elif test_scenario["key_type"] == "invalid":
+                expected_behavior = "none_succeed"
+            else:  # mixed
+                expected_behavior = "some_succeed"
+            
             validation_result = security_validator.validate_concurrent_authentication(
-                test_scenario, valid_results
+                valid_results, expected_behavior
             )
             
-            assert validation_result["is_handled_correctly"], \
+            assert validation_result["validation_passed"], \
                 f"Concurrent authentication should be handled correctly: {test_scenario['description']}"
             
             # Check that valid keys still work under concurrent load

@@ -333,3 +333,25 @@ class MultiModalFixtures:
         
         img_b64 = base64.b64encode(img_data).decode('utf-8')
         return f"data:image/png;base64,{img_b64}"
+    
+    def generate_high_resolution_image_data(self, dimensions: str = "4000x4000") -> str:
+        """Generate high resolution image data for testing resolution limits"""
+        # Parse dimensions
+        if "x" in dimensions:
+            width_str, height_str = dimensions.split("x")[0:2]
+            width = int(width_str)
+            height = int(height_str)
+        else:
+            # Default to square image
+            width = height = 4000
+        
+        # Create a high resolution image
+        img = Image.new('RGB', (width, height), color='blue')
+        
+        # Use JPEG for better compression on large images
+        buffer = io.BytesIO()
+        img.save(buffer, format='JPEG', quality=85)
+        img_data = buffer.getvalue()
+        
+        img_b64 = base64.b64encode(img_data).decode('utf-8')
+        return img_b64

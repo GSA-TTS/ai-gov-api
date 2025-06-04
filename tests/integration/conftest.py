@@ -5,6 +5,7 @@ import asyncio
 import logging
 from typing import AsyncGenerator, Dict, Any, List
 from pathlib import Path
+import pytest_asyncio
 
 import sys
 from pathlib import Path
@@ -21,12 +22,13 @@ from utils.security_validators import SecurityValidator
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def http_client():
     """Create an HTTP client for testing"""
     app_config.validate()
@@ -36,10 +38,10 @@ async def http_client():
         timeout=app_config.TIMEOUT,
         headers={"User-Agent": "GSAi-API-Test-Framework/1.0"}
     )
-    try:
-        yield client
-    finally:
-        await client.aclose()
+    
+    yield client
+    
+    await client.aclose()
 
 
 @pytest.fixture(scope="session")
@@ -186,6 +188,39 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "slow: mark test as slow running"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api1: OWASP API1 - Broken Object Level Authorization"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api2: OWASP API2 - Broken Authentication"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api3: OWASP API3 - Broken Object Property Level Authorization"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api4: OWASP API4 - Unrestricted Resource Consumption"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api5: OWASP API5 - Broken Function Level Authorization"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api6: OWASP API6 - Unrestricted Access to Sensitive Business Flows"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api7: OWASP API7 - Server Side Request Forgery"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api8: OWASP API8 - Security Misconfiguration"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api9: OWASP API9 - Improper Inventory Management"
+    )
+    config.addinivalue_line(
+        "markers", "owasp_api10: OWASP API10 - Unsafe Consumption of APIs"
+    )
+    config.addinivalue_line(
+        "markers", "cross_agency: Cross-Agency Data Protection tests"
     )
 
 

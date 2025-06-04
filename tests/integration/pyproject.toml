@@ -1,0 +1,28 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["."]
+addopts = "-v"
+markers = [
+    "security: mark test as a security test",
+    "zero_trust: mark test as a zero trust test",
+    "prompt_injection: mark test as a prompt injection test",
+    "performance: mark test as a performance test",
+    "reliability: mark test as a reliability test",
+    "data_management: mark test as a data management test",
+    "functional: mark test as a functional test",
+    "slow: mark test as slow running",
+    "owasp_api1: OWASP API1 - Broken Object Level Authorization",
+    "owasp_api2: OWASP API2 - Broken Authentication",
+    "owasp_api3: OWASP API3 - Broken Object Property Level Authorization",
+    "owasp_api4: OWASP API4 - Unrestricted Resource Consumption",
+    "owasp_api5: OWASP API5 - Broken Function Level Authorization",
+    "owasp_api6: OWASP API6 - Unrestricted Access to Sensitive Business Flows",
+    "owasp_api7: OWASP API7 - Server Side Request Forgery",
+    "owasp_api8: OWASP API8 - Security Misconfiguration",
+    "owasp_api9: OWASP API9 - Improper Inventory Management",
+    "owasp_api10: OWASP API10 - Unsafe Consumption of APIs",
+]
+
+[tool.pytest_asyncio]
+asyncio_mode = "auto"
