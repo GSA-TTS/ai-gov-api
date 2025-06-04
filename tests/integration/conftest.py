@@ -26,8 +26,8 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="function")
-async def http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
+@pytest.fixture
+async def http_client():
     """Create an HTTP client for testing"""
     app_config.validate()
     
