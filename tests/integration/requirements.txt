@@ -39,12 +39,12 @@ lxml>=4.9.0                  # XML parsing for SSRF testing
 dnspython>=2.4.0             # DNS rebinding attack testing
 tldextract>=5.0.0            # URL validation and parsing
 pyotp>=2.9.0                 # Time-based authentication testing
-scapy>=2.5.0                 # Network protocol testing (optional)
+# scapy>=2.5.0 - Network protocol testing (requires admin privileges, see note below)
 
 # Multi-Modal Testing
 pillow>=10.0.0
 python-magic>=0.4.27
-PyPDF2>=3.0.0
+pypdf>=3.0.0                   # PDF processing (PyPDF2 is deprecated)
 python-multipart>=0.0.6
 
 # Performance and Monitoring
@@ -65,22 +65,21 @@ memory-profiler>=0.61.0
 
 # Reliability Framework Specific Dependencies
 backoff>=2.2.1                  # Exponential backoff for retry strategies
-circuit-breaker>=1.4.0          # Circuit breaker pattern implementation
+circuitbreaker>=1.4.0           # Circuit breaker pattern implementation
 tenacity>=8.2.3                 # Advanced retry mechanisms and policies
 
 # Chaos Engineering Dependencies
-chaos-engineering>=0.3.0        # Chaos engineering testing framework (if available)
-# Note: chaos-engineering may need to be installed via: pip install chaos-engineering
+# chaos-engineering: Package does not exist on PyPI
 # Alternative: implement chaos patterns using existing httpx and asyncio
 
 # SLO and Observability Dependencies
-prometheus-client>=0.17.0       # Metrics collection for SLO monitoring (already included above)
+# prometheus-client>=0.17.0 - Already included above
 grafana-api>=1.0.3              # Grafana integration for observability dashboards
 opentelemetry-api>=1.21.0       # OpenTelemetry for distributed tracing
 opentelemetry-sdk>=1.21.0       # OpenTelemetry SDK for instrumentation
 
 # Advanced Monitoring and Alerting
-alertmanager-api>=0.1.0         # Alertmanager integration for intelligent alerting
+# alertmanager-api: Package does not exist on PyPI - use requests for direct API calls
 pagerduty>=0.2.1                # PagerDuty integration for incident management
 
 # Distributed Systems Testing
@@ -117,7 +116,7 @@ user-agents>=2.2.0              # User agent analysis for device fingerprinting
 
 # Advanced Cryptographic Testing Dependencies
 # Note: These libraries support testing of advanced Zero Trust cryptographic concepts
-cryptography>=41.0.0            # Core cryptographic operations (already included above)
+# cryptography>=41.0.0 - Already included above
 cffi>=1.16.0                    # Foreign Function Interface for cryptographic libraries
 asn1crypto>=1.5.1               # ASN.1 parsing for certificate and key management testing
 
@@ -133,18 +132,21 @@ scipy>=1.11.0                   # Statistical analysis for behavioral biometrics
 numpy>=1.24.0                   # Mathematical operations for pattern analysis
 
 # Network Security and Analysis
-scapy>=2.5.0                    # Network protocol analysis and packet crafting
-nmap>=0.1.4                     # Network discovery and security auditing (Python wrapper)
+# scapy>=2.5.0 - Requires admin privileges and may have installation issues
+# Consider mocking network operations for tests or install with: sudo pip install scapy
+python-nmap>=0.7.1              # Network discovery and security auditing (Python wrapper)
 
 # Identity and Access Management Testing
 python-jose>=3.3.0              # JWT and JWE token handling for federation testing
 pycryptodome>=3.19.0            # Advanced cryptographic operations
 
 # Hardware Security Module (HSM) Testing Simulation
-pkcs11>=0.7.0                   # PKCS#11 interface for HSM simulation
+# pkcs11>=0.7.0 - Requires system PKCS#11 libraries
+# Install system PKCS#11 development libraries first or mock for testing
 
 # Zero Trust Architecture Testing Dependencies
-python-ldap>=3.4.3              # LDAP integration testing for identity federation
+# python-ldap>=3.4.3 - Requires system LDAP libraries, often fails on macOS/Windows
+ldap3>=2.9.0                    # Pure Python LDAP client (alternative to python-ldap)
 pyotp>=2.9.0                    # TOTP/HOTP for multi-factor authentication testing (already included)
 
 # AI/ML Security Testing for Zero Trust
@@ -197,21 +199,24 @@ xlsxwriter>=3.1.0               # Excel file creation for test data export
 tabulate>=0.9.0                 # Table formatting for data presentation
 
 # Blockchain and Cryptographic Features
-cryptography>=41.0.0            # Core cryptographic operations (already included above)
+# cryptography>=41.0.0 - Already included above
 # hashlib is a built-in Python module, no external package needed
-merkletools>=1.0.3              # Merkle tree implementation for blockchain features
-py-ecc>=6.0.0                   # Elliptic curve cryptography for blockchain
+pymerkletools>=1.0.3            # Merkle tree implementation for blockchain features
+py_ecc>=6.0.0                   # Elliptic curve cryptography for blockchain
 
 # Multi-Language and Internationalization
 langdetect>=1.0.9               # Language detection for multilingual testing (already included above)
-polyglot>=16.7.4                # Natural language processing for multiple languages
+# polyglot>=16.7.4 - Package is deprecated and has installation issues
+# Alternative: use spacy>=3.6.0 or transformers for multilingual NLP
+spacy>=3.6.0                    # Modern NLP library for multilingual processing
 babel>=2.13.0                   # Internationalization utilities
 unicode-slugify>=0.1.5          # Unicode-aware text processing
 
 # Privacy-Preserving Technologies
-differential-privacy>=1.1.4     # Differential privacy implementation
+diffprivlib>=0.6.0              # Differential privacy implementation
 phe>=1.5.0                      # Paillier homomorphic encryption
-crypten>=0.4.1                  # Secure multi-party computation (if available)
+# crypten: Facebook research package - install from GitHub if needed
+# git+https://github.com/facebookresearch/CrypTen.git
 
 # Data Quality and Metrics
 great-expectations>=0.18.0      # Data quality validation and profiling
@@ -242,12 +247,12 @@ python-dateutil>=2.8.0         # Date utilities (already included above)
 
 # Configuration and Environment Management
 python-dotenv>=1.0.0            # Environment variable management (already included above)
-pydantic>=2.10.6                # Data validation and settings (already included above)
+# pydantic>=2.10.6 - Already included above
 configobj>=5.0.8                # Configuration file parsing
 toml>=0.10.2                    # TOML file parsing
 
 # Advanced Monitoring and Observability
-prometheus-client>=0.17.0       # Metrics collection (already included above)
+# prometheus-client>=0.17.0 - Already included above
 grafana-api>=1.0.3              # Grafana integration (already included above)
 opentelemetry-api>=1.21.0       # Distributed tracing (already included above)
 opentelemetry-sdk>=1.21.0       # OpenTelemetry SDK (already included above)
@@ -275,7 +280,7 @@ py7zr>=0.20.0                   # 7-Zip archive support
 
 # Edge Case and Adversarial Testing
 adversarial-robustness-toolbox>=1.15.0  # Adversarial attack generation (if available)
-art>=1.15.0                     # Alternative name for adversarial-robustness-toolbox
+# art>=1.15.0 - Ambiguous package name, use adversarial-robustness-toolbox instead
 
 # Real-Time Processing and Streaming
 kafka-python>=2.0.2             # Apache Kafka for real-time data streaming
@@ -294,7 +299,7 @@ psycopg2-binary>=2.9.0          # PostgreSQL adapter for database testing
 # Advanced Caching and Storage
 diskcache>=5.6.0                # Disk-based caching for test data
 joblib>=1.3.0                   # Efficient serialization and caching
-pickle5>=0.0.12                 # Enhanced pickle support
+# pickle5>=0.0.12 - Only needed for Python < 3.8, remove if using Python 3.8+
 
 # Data Migration and ETL Testing
 petl>=1.7.0                     # Extract, Transform, Load operations
