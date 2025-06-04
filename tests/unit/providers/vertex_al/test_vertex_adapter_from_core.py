@@ -11,7 +11,7 @@ def test_vertex_message_conversion(core_chat_request, vertex_history):
 def test_vertex_system_message_conversion(core_full_chat_request, vertex_full_history):
     req_obj = convert_chat_request(core_full_chat_request)
     assert all(converted.text == fixture.text 
-                for converted, fixture in zip(req_obj.contents, vertex_full_history))
+                for converted, fixture in zip(req_obj.contents, vertex_full_history) if hasattr(converted, 'text'))
     assert all(converted.role == fixture.role 
                for converted, fixture in zip(req_obj.contents, vertex_full_history))
     

@@ -4,7 +4,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 from vertexai.language_models import TextEmbeddingInput
-from vertexai.generative_models import GenerationConfig, Content, SafetySetting
+from vertexai.generative_models import GenerationConfig, Content, SafetySetting, Tool, ToolConfig
 
 
 class VertexGenerateRequest(BaseModel):
@@ -14,6 +14,8 @@ class VertexGenerateRequest(BaseModel):
     generation_config: GenerationConfig | None = None
     safety_settings: SafetySetting | None = None
     stream: Optional[bool] = False
+    tools: List[Tool] | None
+    tool_config: ToolConfig | None
 
 class EmbeddingRequest(BaseModel):
     texts: List[str | TextEmbeddingInput]
