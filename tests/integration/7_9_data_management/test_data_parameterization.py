@@ -10,7 +10,7 @@ import itertools
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 import json
-import yaml
+# import yaml - replaced with json
 import csv
 import tempfile
 import os
@@ -347,8 +347,8 @@ class TestBasicParameterization:
             ["Test prompt 3", "40", "0.5"]
         ]
         
-        # YAML parameter file
-        yaml_data = {
+        # JSON parameter file (was YAML)
+        json_alt_data = {
             "parameters": {
                 "models": ["model1", "model2"],
                 "scenarios": [
@@ -368,9 +368,9 @@ class TestBasicParameterization:
             writer.writerows(csv_data)
             test_data_files['csv'] = f.name
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump(yaml_data, f)
-            test_data_files['yaml'] = f.name
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(json_alt_data, f)
+            test_data_files['yaml'] = f.name  # Keep key name for compatibility
         
         external_data_results = []
         
@@ -420,11 +420,11 @@ class TestBasicParameterization:
                         "success": response.status_code == 200
                     })
             
-            # Test YAML data file
+            # Test JSON data file (was YAML)
             with open(test_data_files['yaml'], 'r') as f:
-                yaml_params = yaml.safe_load(f)
+                json_alt_params = json.load(f)
             
-            for scenario in yaml_params["parameters"]["scenarios"]:
+            for scenario in json_alt_params["parameters"]["scenarios"]:
                 request_data = {
                     "model": config.get_chat_model(0),
                     "messages": [{"role": "user", "content": f"Test {scenario['name']}"}],

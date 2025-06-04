@@ -7,14 +7,19 @@ from dataclasses import dataclass
 import pytest
 
 # Load environment variables from .env file if it exists
-try:
-    from dotenv import load_dotenv
-    env_path = Path(__file__).parent / '.env'
-    if env_path.exists():
-        load_dotenv(env_path)
-except ImportError:
-    # dotenv not available, use system environment variables
-    pass
+# Using built-in configparser instead of python-dotenv
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    # Read .env file manually
+    with open(env_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
 
 
 @dataclass
