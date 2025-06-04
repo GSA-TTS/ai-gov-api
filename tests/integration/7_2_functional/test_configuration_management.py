@@ -23,11 +23,12 @@ class TestBackendMapValidation:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_CFM_BACKEND_MAP_VALID_ROUTE_001: Verify correct model routing to specified provider"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test routing for each configured model
-        for model_id in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model_id in chat_models:
             request = {
                 "model": model_id,
                 "messages": [{"role": "user", "content": f"Test routing for {model_id}"}],
@@ -62,8 +63,8 @@ class TestBackendMapValidation:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_CFM_BACKEND_MAP_INVALID_ARN_001: Test invalid provider_model_id handling for Bedrock"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with invalid Bedrock ARN format
         invalid_bedrock_models = [
@@ -102,8 +103,8 @@ class TestBackendMapValidation:
                                                             auth_headers: Dict[str, str],
                                                             make_request):
         """FV_CFM_BACKEND_MAP_INVALID_PROJECT_ID_001: Test invalid project_id handling for Vertex AI"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with invalid Vertex AI model formats
         invalid_vertex_models = [
@@ -142,11 +143,12 @@ class TestBackendMapValidation:
                                                               auth_headers: Dict[str, str],
                                                               make_request):
         """FV_CFM_BACKEND_MAP_CAP_MISMATCH_STARTUP_001: Test capability mismatch detection"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test embedding model with chat endpoint
-        for embedding_model in config.EMBEDDING_MODELS:
+        embedding_models = config.get_embedding_models() if config.get_embedding_models() else []
+        for embedding_model in embedding_models:
             request = {
                 "model": embedding_model,
                 "messages": [{"role": "user", "content": "Test capability mismatch"}],
@@ -172,7 +174,8 @@ class TestBackendMapValidation:
             logger.info(f"FV_CFM_BACKEND_MAP_CAP_MISMATCH_STARTUP_001: Capability mismatch for {embedding_model} detected")
         
         # Test chat model with embedding endpoint
-        for chat_model in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for chat_model in chat_models:
             request = {
                 "model": chat_model,
                 "input": "Test capability mismatch for embedding"
@@ -201,8 +204,8 @@ class TestBackendMapValidation:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_CFM_BACKEND_MAP_UNKNOWN_PROVIDER_001: Test unknown provider handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with unknown provider formats
         unknown_provider_models = [
@@ -248,14 +251,15 @@ class TestEnvironmentConfiguration:
                                                             auth_headers: Dict[str, str],
                                                             make_request):
         """FV_CFM_ENV_MISSING_VAR_BEDROCK_REGION_001: Test missing AWS_REGION handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # This test verifies that the system has proper AWS region configuration
         # We can't actually remove the environment variable during runtime,
         # but we can verify the system behavior with Bedrock models
         
-        bedrock_models = [model for model in config.CHAT_MODELS if "bedrock" in model.lower() or "anthropic" in model.lower() or "amazon" in model.lower()]
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models if "bedrock" in model.lower() or "anthropic" in model.lower() or "amazon" in model.lower()]
         
         if not bedrock_models:
             pytest.skip("No Bedrock models configured for testing")
@@ -292,11 +296,12 @@ class TestEnvironmentConfiguration:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_CFM_ENV_MISSING_VAR_VERTEX_CREDS_001: Test missing Vertex AI credentials"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test Vertex AI models to verify credential configuration
-        vertex_models = [model for model in config.CHAT_MODELS if "vertex" in model.lower() or "gemini" in model.lower() or "google" in model.lower()]
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models if "vertex" in model.lower() or "gemini" in model.lower() or "google" in model.lower()]
         
         if not vertex_models:
             pytest.skip("No Vertex AI models configured for testing")
@@ -332,8 +337,8 @@ class TestEnvironmentConfiguration:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_CFM_ENV_SETTINGS_OVERRIDE_001: Verify environment variable overrides"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that environment variables are properly loaded and used
         # We can check this by verifying the configuration values
@@ -367,8 +372,8 @@ class TestEnvironmentConfiguration:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_CFM_ENV_DATABASE_CONNECTION_001: Test database connection configuration"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that database-dependent operations work
         # This indirectly tests database connectivity
@@ -403,8 +408,8 @@ class TestSettingsValidation:
                                                                  auth_headers: Dict[str, str],
                                                                  make_request):
         """FV_CFM_SETTINGS_VALIDATION_REQUIRED_FIELDS_001: Test required field validation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Verify that required configuration fields are present
         required_fields = [
@@ -432,8 +437,8 @@ class TestSettingsValidation:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_CFM_SETTINGS_TYPE_VALIDATION_001: Test Pydantic type validation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that configuration values have correct types
         type_validations = [
@@ -469,8 +474,8 @@ class TestSettingsValidation:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_CFM_BACKEND_MAP_INITIALIZATION_001: Verify backend_map population"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that all configured models are accessible via /models endpoint
         response = await make_request(
@@ -485,7 +490,9 @@ class TestSettingsValidation:
         available_models = [model["id"] for model in response_data["data"]]
         
         # Verify that configured models are in the available models
-        configured_models = config.CHAT_MODELS + config.EMBEDDING_MODELS
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        embedding_models = config.get_embedding_models() if config.get_embedding_models() else []
+        configured_models = chat_models + embedding_models
         
         for configured_model in configured_models:
             # Model might be in available models directly or with normalization
@@ -503,8 +510,8 @@ class TestSettingsValidation:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_CFM_SETTINGS_CACHE_CONSISTENCY_001: Test settings caching consistency"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Make multiple requests to verify consistent behavior
         responses = []

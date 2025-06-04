@@ -24,8 +24,8 @@ class TestProviderErrorTranslation:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_EH_PROVIDER_BEDROCK_VALIDATION_001: Test Bedrock ValidationException translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test scenarios that should trigger Bedrock validation errors
         bedrock_validation_scenarios = [
@@ -81,8 +81,8 @@ class TestProviderErrorTranslation:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_EH_PROVIDER_BEDROCK_ACCESSDENIED_001: Test Bedrock AccessDeniedException translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with potentially restricted Bedrock model
         restricted_models = [
@@ -125,8 +125,8 @@ class TestProviderErrorTranslation:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_EH_PROVIDER_BEDROCK_THROTTLING_001: Test Bedrock ThrottlingException translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         import asyncio
         
@@ -176,8 +176,8 @@ class TestProviderErrorTranslation:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_EH_PROVIDER_VERTEXAI_INVALID_ARG_001: Test Vertex AI InvalidArgument translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test scenarios that should trigger Vertex AI InvalidArgument errors
         vertex_invalid_scenarios = [
@@ -229,8 +229,8 @@ class TestProviderErrorTranslation:
                                                                auth_headers: Dict[str, str],
                                                                make_request):
         """FV_EH_PROVIDER_VERTEXAI_PERMISSION_DENIED_001: Test Vertex AI PermissionDenied translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with potentially restricted Vertex AI models
         restricted_vertex_models = [
@@ -270,11 +270,12 @@ class TestProviderErrorTranslation:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_EH_PROVIDER_VERTEXAI_UNAVAILABLE_001: Test Vertex AI ServiceUnavailable translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with various Vertex AI models to check availability
-        vertex_models = [model for model in config.CHAT_MODELS if "gemini" in model.lower() or "bison" in model.lower()]
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models if "gemini" in model.lower() or "bison" in model.lower()]
         
         if not vertex_models:
             pytest.skip("No Vertex AI models configured")
@@ -316,8 +317,8 @@ class TestProviderErrorTranslation:
                                              auth_headers: Dict[str, str],
                                              make_request):
         """FV_EH_PROVIDER_TIMEOUT_001: Test provider timeout handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with a request that might cause timeout (very long prompt)
         long_prompt = "Please analyze this: " + "A" * 5000 + " Provide detailed analysis."
@@ -363,8 +364,8 @@ class TestAdapterErrorHandling:
                                                                auth_headers: Dict[str, str],
                                                                make_request):
         """FV_EH_ADAPTER_MALFORMED_PROVIDER_RESPONSE_001: Test malformed provider response handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test edge cases that might cause malformed responses
         edge_case_requests = [
@@ -429,8 +430,8 @@ class TestAdapterErrorHandling:
                                                             auth_headers: Dict[str, str],
                                                             make_request):
         """FV_EH_ADAPTER_UNEXPECTED_FINISH_REASON_001: Test unmapped finish_reason handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test scenarios that might produce unusual finish reasons
         unusual_scenarios = [
@@ -501,8 +502,8 @@ class TestInternalErrorHandling:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_EH_INTERNAL_UNHANDLED_IN_ROUTE_001: Test FastAPI 500 error handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test requests that might cause internal errors
         potential_error_requests = [
@@ -569,8 +570,8 @@ class TestInternalErrorHandling:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_EH_INTERNAL_CUSTOM_API_EXCEPTION_001: Test custom exception handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test scenarios that might trigger custom exceptions
         custom_exception_scenarios = [
@@ -624,8 +625,8 @@ class TestInternalErrorHandling:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_EH_INTERNAL_STREAMING_ERROR_001: Test streaming error handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test streaming with scenarios that might cause errors
         streaming_error_scenarios = [
@@ -688,8 +689,8 @@ class TestSensitiveInformationProtection:
                                                                security_validator: SecurityValidator,
                                                                make_request):
         """FV_EH_SENSITIVE_NO_STACKTRACE_IN_RESPONSE_001: Verify no stack traces in responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various error conditions to check for stack trace leakage
         error_scenarios = [
@@ -752,8 +753,8 @@ class TestSensitiveInformationProtection:
                                                                   auth_headers: Dict[str, str],
                                                                   make_request):
         """FV_EH_SENSITIVE_NO_PROVIDER_INTERNAL_DETAILS_001: Verify no provider details leaked"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various provider-related errors
         provider_error_scenarios = [
@@ -820,8 +821,8 @@ class TestSensitiveInformationProtection:
                                                                    auth_headers: Dict[str, str],
                                                                    make_request):
         """FV_EH_SENSITIVE_NO_CONFIG_DETAILS_IN_RESPONSE_001: Verify no config details leaked"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various scenarios that might expose configuration
         config_exposure_scenarios = [

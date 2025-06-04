@@ -21,7 +21,8 @@ class TestBusinessLogicValidation:
     async def test_fv_blv_route_bedrock_001(self, http_client: httpx.AsyncClient,
                                           auth_headers: Dict[str, str], make_request):
         """FV_BLV_ROUTE_BEDROCK_001: Bedrock model routing validation"""
-        bedrock_models = [model for model in config.CHAT_MODELS if "claude" in model.lower()]
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models if "claude" in model.lower()]
         
         if not bedrock_models:
             pytest.skip("No Bedrock models configured")
@@ -53,7 +54,8 @@ class TestBusinessLogicValidation:
     async def test_fv_blv_route_vertexai_001(self, http_client: httpx.AsyncClient,
                                            auth_headers: Dict[str, str], make_request):
         """FV_BLV_ROUTE_VERTEXAI_001: Vertex AI model routing validation"""
-        vertexai_models = [model for model in config.CHAT_MODELS if "gemini" in model.lower()]
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertexai_models = [model for model in chat_models if "gemini" in model.lower()]
         
         if not vertexai_models:
             pytest.skip("No Vertex AI models configured")
@@ -85,7 +87,8 @@ class TestBusinessLogicValidation:
     async def test_fv_blv_route_openai_001(self, http_client: httpx.AsyncClient,
                                          auth_headers: Dict[str, str], make_request):
         """FV_BLV_ROUTE_OPENAI_001: OpenAI-compatible model routing validation"""
-        openai_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        openai_models = [model for model in chat_models 
                         if "gpt" in model.lower() or "llama" in model.lower()]
         
         if not openai_models:
@@ -185,7 +188,8 @@ class TestBusinessLogicValidation:
         # Verify that configured models are in the response
         available_models = [model["id"] for model in response_data["data"]]
         
-        for configured_model in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for configured_model in chat_models:
             assert configured_model in available_models, f"Configured model {configured_model} should be available"
         
         logger.info("FV_BLV_MODEL_AVAILABILITY_001: Model availability verified")
@@ -200,7 +204,8 @@ class TestBusinessLogicValidation:
         # Test the same prompt across different models/providers
         responses = []
         
-        for model in config.CHAT_MODELS[:3]:  # Test first 3 models
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models[:3]:  # Test first 3 models
             request = {
                 "model": model,
                 "messages": [{"role": "user", "content": test_prompt}],
@@ -303,7 +308,8 @@ class TestProviderFailover:
         # In a real system, this would involve actually failing one provider
         
         # Test that the system continues to work with available models
-        for model in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models:
             request = {
                 "model": model,
                 "messages": [{"role": "user", "content": "Test failover scenario"}],

@@ -23,8 +23,8 @@ class TestResponseRelevance:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_QUALITY_RELEVANCE_FACTUAL_001: Test factual question response relevance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test factual questions that have clear correct answers
         factual_questions = [
@@ -81,8 +81,8 @@ class TestResponseRelevance:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_QUALITY_RELEVANCE_CONTEXTUAL_001: Test contextual response relevance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test multi-turn conversations for context awareness
         conversation_tests = [
@@ -140,8 +140,8 @@ class TestResponseRelevance:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_QUALITY_RELEVANCE_TASK_SPECIFIC_001: Test task-specific response quality"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test specific task types
         task_tests = [
@@ -206,8 +206,8 @@ class TestResponseCoherence:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_QUALITY_COHERENCE_LOGICAL_001: Test logical coherence in responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test prompts that require logical reasoning
         logical_tests = [
@@ -276,8 +276,8 @@ class TestResponseCoherence:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_QUALITY_COHERENCE_CONSISTENCY_001: Test response consistency"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test same question multiple times for consistency
         consistency_prompt = "What is the primary function of the heart in the human body?"
@@ -322,8 +322,8 @@ class TestResponseCoherence:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_QUALITY_COHERENCE_STRUCTURE_001: Test response structure coherence"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test prompts requiring structured responses
         structure_tests = [
@@ -380,8 +380,8 @@ class TestResponseCompleteness:
                                                                auth_headers: Dict[str, str],
                                                                make_request):
         """FV_QUALITY_COMPLETENESS_QUESTION_COVERAGE_001: Test complete question coverage"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test multi-part questions
         multi_part_questions = [
@@ -434,8 +434,8 @@ class TestResponseCompleteness:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_QUALITY_COMPLETENESS_DEPTH_001: Test response depth and detail"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test requests for detailed explanations
         depth_tests = [
@@ -492,8 +492,8 @@ class TestResponseSafety:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_QUALITY_SAFETY_HARMFUL_CONTENT_001: Test harmful content filtering"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test potentially harmful prompts (should be refused or redirected)
         harmful_prompts = [
@@ -541,8 +541,8 @@ class TestResponseSafety:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_QUALITY_SAFETY_PII_PROTECTION_001: Test PII protection in responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test prompts that might elicit PII generation
         pii_prompts = [
@@ -599,8 +599,8 @@ class TestResponseSafety:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_QUALITY_SAFETY_PROFESSIONAL_TONE_001: Test professional tone maintenance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test professional context prompts
         professional_prompts = [
@@ -658,8 +658,8 @@ class TestResponseAccuracy:
                                                            auth_headers: Dict[str, str],
                                                            make_request):
         """FV_QUALITY_ACCURACY_VERIFIABLE_FACTS_001: Test verifiable fact accuracy"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test questions with verifiable factual answers
         fact_questions = [
@@ -714,8 +714,8 @@ class TestResponseAccuracy:
                                                                auth_headers: Dict[str, str],
                                                                make_request):
         """FV_QUALITY_ACCURACY_UNCERTAINTY_HANDLING_001: Test uncertainty and limitation acknowledgment"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test questions where uncertainty should be acknowledged
         uncertain_questions = [

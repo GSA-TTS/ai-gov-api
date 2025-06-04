@@ -23,8 +23,8 @@ class TestAgencySpecificScoping:
                                                 auth_headers: Dict[str, str],
                                                 make_request):
         """FV_AGY_SCOPE_CHAT_ALLOWED_001: Verify API key with models:inference scope can access /chat/completions"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -55,8 +55,8 @@ class TestAgencySpecificScoping:
                                                embedding_auth_headers: Dict[str, str],
                                                make_request):
         """FV_AGY_SCOPE_CHAT_DENIED_001: Verify API key without models:inference scope is denied /chat/completions access"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -87,8 +87,8 @@ class TestAgencySpecificScoping:
                                                  embedding_auth_headers: Dict[str, str],
                                                  make_request):
         """FV_AGY_SCOPE_EMBED_ALLOWED_001: Verify API key with models:embedding scope can access /embeddings"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_embedding_model(0),
@@ -118,8 +118,8 @@ class TestAgencySpecificScoping:
                                                 auth_headers: Dict[str, str],
                                                 make_request):
         """FV_AGY_SCOPE_EMBED_DENIED_001: Verify API key without models:embedding scope is denied /embeddings access"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_embedding_model(0),
@@ -149,8 +149,8 @@ class TestAgencySpecificScoping:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_AGY_SCOPE_MODELS_ALLOWED_001: Verify valid API key can access /models endpoint"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         response = await make_request(
             http_client, "GET", "/api/v1/models",
@@ -178,8 +178,8 @@ class TestAgencySpecificScoping:
     async def test_fv_agy_scope_models_no_auth_denied_001(self, http_client: httpx.AsyncClient,
                                                          make_request):
         """FV_AGY_SCOPE_MODELS_NO_AUTH_DENIED_001: Verify unauthenticated requests are denied /models access"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Request without authentication headers
         response = await make_request(
@@ -208,8 +208,8 @@ class TestAgencySpecificUsageTracking:
                                                     cost_tracking,
                                                     make_request):
         """FV_AGY_USAGE_CHAT_ATTRIBUTION_001: Verify token usage attribution for /chat/completions"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Reset cost tracking
         initial_cost = cost_tracking.total_cost
@@ -245,7 +245,7 @@ class TestAgencySpecificUsageTracking:
         # Verify cost tracking was updated
         assert cost_tracking.total_tokens > initial_tokens
         assert cost_tracking.request_count > initial_requests
-        if config.ENABLE_COST_TRACKING:
+        if hasattr(config, 'ENABLE_COST_TRACKING') and config.ENABLE_COST_TRACKING:
             assert cost_tracking.total_cost >= initial_cost
         
         logger.info(f"FV_AGY_USAGE_CHAT_ATTRIBUTION_001: Chat usage tracked - {usage['total_tokens']} tokens")
@@ -257,8 +257,8 @@ class TestAgencySpecificUsageTracking:
                                                      cost_tracking,
                                                      make_request):
         """FV_AGY_USAGE_EMBED_ATTRIBUTION_001: Verify token usage attribution for /embeddings"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Reset cost tracking
         initial_tokens = cost_tracking.total_tokens
@@ -304,8 +304,8 @@ class TestAgencySpecificUsageTracking:
                                                      multimodal_fixtures,
                                                      make_request):
         """FV_AGY_USAGE_MULTIMODAL_TOKENS_001: Verify multimodal content token counting"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Get a test image
         test_image = multimodal_fixtures.get_test_image_base64()
@@ -359,8 +359,8 @@ class TestAgencySpecificUsageTracking:
                                                          cost_tracking,
                                                          make_request):
         """FV_AGY_USAGE_STREAMING_ATTRIBUTION_001: Verify streaming request usage attribution"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         initial_tokens = cost_tracking.total_tokens
         
@@ -416,7 +416,7 @@ class TestAgencySpecificUserManagement:
                                                admin_auth_headers: Dict[str, str],
                                                make_request):
         """FV_AGY_USER_KEY_CREATION_001: Verify user and API key creation workflow"""
-        if not config.ENABLE_FUNCTIONAL_TESTS or not admin_auth_headers:
+        if not admin_auth_headers:
             pytest.skip("Admin functional tests disabled or no admin access")
         
         # Test user creation endpoint (if available)
@@ -463,7 +463,7 @@ class TestAgencySpecificUserManagement:
                                            admin_auth_headers: Dict[str, str],
                                            make_request):
         """FV_AGY_KEY_REVOCATION_001: Verify revoked API keys cannot access services"""
-        if not config.ENABLE_FUNCTIONAL_TESTS or not admin_auth_headers:
+        if not admin_auth_headers:
             pytest.skip("Admin functional tests disabled or no admin access")
         
         # Test key revocation endpoints
@@ -515,8 +515,8 @@ class TestAgencySpecificUserManagement:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_AGY_KEY_EXPIRATION_001: Verify expired API keys are rejected"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with a potentially expired key format
         expired_key_header = {
@@ -550,8 +550,8 @@ class TestAgencySpecificMultiTenantIsolation:
                                                            embedding_auth_headers: Dict[str, str],
                                                            make_request):
         """FV_AGY_ISOLATION_CONCURRENT_REQUESTS_001: Verify concurrent requests from different agencies don't interfere"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Create concurrent requests with different scopes/agencies
         async def chat_request():
@@ -611,14 +611,15 @@ class TestAgencySpecificMultiTenantIsolation:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_AGY_ISOLATION_PROVIDER_CLIENTS_001: Verify provider client isolation between agencies"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that different models/providers maintain isolation
         test_requests = []
         
         # Try different models if available
-        for i, model in enumerate(config.CHAT_MODELS[:3]):  # Test up to 3 models
+        chat_models = config.get_chat_models()[:3] if config.get_chat_models() else []
+        for i, model in enumerate(chat_models):  # Test up to 3 models
             test_requests.append({
                 "model": model,
                 "messages": [{"role": "user", "content": f"Test isolation request {i+1}"}],

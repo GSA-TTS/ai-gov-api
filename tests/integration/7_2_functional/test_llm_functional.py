@@ -23,8 +23,8 @@ class TestTokenLimits:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_LLM_TOKEN_PROMPT_EXCEEDS_CTX_001: Test context window limit handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Generate progressively larger prompts to test context limits
         base_text = "This is a test of context window limits. "
@@ -81,8 +81,8 @@ class TestTokenLimits:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_LLM_TOKEN_MAXTOKENS_RESPECTED_001: Verify max_tokens parameter enforcement"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test different max_tokens values
         max_tokens_tests = [10, 50, 100, 200]
@@ -124,8 +124,8 @@ class TestTokenLimits:
                                                               auth_headers: Dict[str, str],
                                                               make_request):
         """FV_LLM_TOKEN_MAXTOKENS_IGNORED_IF_LARGER_001: Test max_tokens larger than natural response"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Short prompt that should naturally complete in few tokens
         request = {
@@ -164,8 +164,8 @@ class TestTokenLimits:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_LLM_TOKEN_COUNT_ACCURACY_001: Test token count accuracy"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with various prompt lengths for token count consistency
         test_prompts = [
@@ -217,8 +217,8 @@ class TestStreamingFunction:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_LLM_STREAM_FUNC_CONTENT_ORDER_001: Verify streaming content order"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -278,8 +278,8 @@ class TestStreamingFunction:
                                                                  auth_headers: Dict[str, str],
                                                                  make_request):
         """FV_LLM_STREAM_FUNC_FINISH_REASON_LAST_CHUNK_001: Test finish_reason in final chunk"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -332,8 +332,8 @@ class TestStreamingFunction:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_LLM_STREAM_FUNC_TOOL_CALLS_001: Test tool calls in streaming"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test streaming with function/tool calling (if supported)
         request = {
@@ -406,8 +406,8 @@ class TestStreamingFunction:
                                                auth_headers: Dict[str, str],
                                                make_request):
         """FV_LLM_STREAM_SSE_FORMAT_001: Verify SSE format compliance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -478,8 +478,8 @@ class TestParameterBehavior:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_LLM_PARAM_TEMP_0_DETERMINISM_001: Test temperature=0 determinism"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Make multiple identical requests with temperature=0
         deterministic_request = {
@@ -523,8 +523,8 @@ class TestParameterBehavior:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_LLM_PARAM_TEMP_HIGH_VARIABILITY_001: Test high temperature variability"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Make multiple requests with high temperature
         variable_request = {
@@ -571,8 +571,8 @@ class TestParameterBehavior:
                                                  auth_headers: Dict[str, str],
                                                  make_request):
         """FV_LLM_PARAM_STOP_SEQUENCE_001: Test stop sequence functionality"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -620,8 +620,8 @@ class TestParameterBehavior:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_LLM_PARAM_SYSTEM_MESSAGE_EFFECT_001: Test system message influence"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with system message
         request_with_system = {
@@ -680,8 +680,8 @@ class TestParameterBehavior:
                                                 auth_headers: Dict[str, str],
                                                 make_request):
         """FV_LLM_PARAM_TOP_P_EFFECT_001: Test top_p parameter effects"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with low top_p (more focused)
         request_low_top_p = {
@@ -734,8 +734,8 @@ class TestParameterBehavior:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_LLM_PARAM_PRESENCE_PENALTY_001: Test presence_penalty effects"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -773,8 +773,8 @@ class TestParameterBehavior:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_LLM_PARAM_FREQUENCY_PENALTY_001: Test frequency_penalty effects"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -818,15 +818,16 @@ class TestProviderConsistency:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_LLM_PROVIDER_CONSISTENCY_001: Compare behavior across providers"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test same prompt across different models/providers
         test_prompt = "What is the capital of France?"
         
         model_responses = {}
         
-        for model in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models:
             request = {
                 "model": model,
                 "messages": [{"role": "user", "content": test_prompt}],
@@ -875,8 +876,8 @@ class TestProviderConsistency:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_LLM_MODEL_CAPABILITIES_VALIDATION_001: Verify model capabilities match declarations"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Get available models
         models_response = await make_request(
@@ -927,7 +928,8 @@ class TestProviderConsistency:
         
         # Verify at least one model works
         working_models = []
-        for model_id in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model_id in chat_models:
             if model_id in available_models:
                 working_models.append(model_id)
         

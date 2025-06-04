@@ -23,8 +23,8 @@ class TestOpenAPISchemaCompliance:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_OPENAPI_MODELS_RESPONSE_SCHEMA_001: Test /models response schema compliance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         response = await make_request(
             http_client, "GET", "/api/v1/models",
@@ -68,8 +68,8 @@ class TestOpenAPISchemaCompliance:
                                                                  auth_headers: Dict[str, str],
                                                                  make_request):
         """FV_OPENAPI_CHAT_COMPLETIONS_REQUEST_SCHEMA_001: Test chat completions request schema"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test minimal required fields
         minimal_request = {
@@ -122,8 +122,8 @@ class TestOpenAPISchemaCompliance:
                                                                   auth_headers: Dict[str, str],
                                                                   make_request):
         """FV_OPENAPI_CHAT_COMPLETIONS_RESPONSE_SCHEMA_001: Test chat completions response schema"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -195,8 +195,8 @@ class TestOpenAPISchemaCompliance:
                                                            embedding_auth_headers: Dict[str, str],
                                                            make_request):
         """FV_OPENAPI_EMBEDDINGS_REQUEST_SCHEMA_001: Test embeddings request schema"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test minimal required fields
         minimal_request = {
@@ -248,8 +248,8 @@ class TestOpenAPISchemaCompliance:
                                                             embedding_auth_headers: Dict[str, str],
                                                             make_request):
         """FV_OPENAPI_EMBEDDINGS_RESPONSE_SCHEMA_001: Test embeddings response schema"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_embedding_model(0),
@@ -317,8 +317,8 @@ class TestHTTPStatusCodeCompliance:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_OPENAPI_HTTP_STATUS_200_001: Test 200 OK responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test endpoints that should return 200
         success_endpoints = [
@@ -359,8 +359,8 @@ class TestHTTPStatusCodeCompliance:
     async def test_fv_openapi_http_status_401_001(self, http_client: httpx.AsyncClient,
                                                   make_request):
         """FV_OPENAPI_HTTP_STATUS_401_001: Test 401 Unauthorized responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with invalid API key
         invalid_headers = {"Authorization": "Bearer invalid_key_test"}
@@ -384,8 +384,8 @@ class TestHTTPStatusCodeCompliance:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_OPENAPI_HTTP_STATUS_422_001: Test 422 Validation Error responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test validation errors
         validation_errors = [
@@ -437,8 +437,8 @@ class TestContentTypeCompliance:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_OPENAPI_CONTENT_TYPE_JSON_001: Test JSON Content-Type responses"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -469,8 +469,8 @@ class TestContentTypeCompliance:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_OPENAPI_CONTENT_TYPE_STREAM_001: Test streaming Content-Type"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -510,8 +510,8 @@ class TestParameterValidationCompliance:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_OPENAPI_PARAM_VALIDATION_RANGES_001: Test parameter range validation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test parameter ranges according to OpenAI spec
         range_tests = [
@@ -568,8 +568,8 @@ class TestParameterValidationCompliance:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_OPENAPI_PARAM_VALIDATION_TYPES_001: Test parameter type validation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test parameter type validation
         type_tests = [
@@ -623,8 +623,8 @@ class TestErrorResponseCompliance:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_OPENAPI_ERROR_RESPONSE_FORMAT_001: Test error response format compliance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Trigger validation error
         invalid_request = {
@@ -669,8 +669,8 @@ class TestErrorResponseCompliance:
     async def test_fv_openapi_error_response_fields_001(self, http_client: httpx.AsyncClient,
                                                        make_request):
         """FV_OPENAPI_ERROR_RESPONSE_FIELDS_001: Test error response required fields"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test authentication error
         invalid_headers = {"Authorization": "Bearer invalid_key"}

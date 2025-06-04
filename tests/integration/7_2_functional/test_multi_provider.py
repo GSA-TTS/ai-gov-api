@@ -22,11 +22,12 @@ class TestRequestTranslation:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_MPV_REQ_CHAT_MSG_ROLES_BEDROCK_001: Test message role translation to Bedrock"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Find Bedrock models
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic", "amazon", "claude", "titan"])]
         
         if not bedrock_models:
@@ -87,11 +88,12 @@ class TestRequestTranslation:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_MPV_REQ_CHAT_MSG_ROLES_VERTEXAI_001: Test message role translation to Vertex AI"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Find Vertex AI models
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini", "bison", "google"])]
         
         if not vertex_models:
@@ -141,10 +143,11 @@ class TestRequestTranslation:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_MPV_REQ_CHAT_PARAMS_BEDROCK_001: Test parameter translation to Bedrock"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic", "amazon"])]
         
         if not bedrock_models:
@@ -206,10 +209,11 @@ class TestRequestTranslation:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_MPV_REQ_CHAT_PARAMS_VERTEXAI_001: Test parameter translation to Vertex AI"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini", "bison"])]
         
         if not vertex_models:
@@ -269,10 +273,11 @@ class TestRequestTranslation:
                                                           multimodal_fixtures,
                                                           make_request):
         """FV_MPV_REQ_MULTIMODAL_IMAGE_BEDROCK_001: Test image translation to Bedrock"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic", "claude"])]
         
         if not bedrock_models:
@@ -326,10 +331,11 @@ class TestRequestTranslation:
                                                            multimodal_fixtures,
                                                            make_request):
         """FV_MPV_REQ_MULTIMODAL_IMAGE_VERTEXAI_001: Test image translation to Vertex AI"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini"])]
         
         if not vertex_models:
@@ -376,10 +382,11 @@ class TestRequestTranslation:
                                                      embedding_auth_headers: Dict[str, str],
                                                      make_request):
         """FV_MPV_REQ_EMBED_INPUT_BEDROCK_001: Test embedding input translation to Bedrock"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_embed_models = [model for model in config.EMBEDDING_MODELS 
+        embedding_models = config.get_embedding_models() if config.get_embedding_models() else []
+        bedrock_embed_models = [model for model in embedding_models 
                                if any(provider in model.lower() for provider in ["bedrock", "amazon", "titan", "cohere"])]
         
         if not bedrock_embed_models:
@@ -432,10 +439,11 @@ class TestRequestTranslation:
                                                       embedding_auth_headers: Dict[str, str],
                                                       make_request):
         """FV_MPV_REQ_EMBED_INPUT_VERTEXAI_001: Test embedding input translation to Vertex AI"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_embed_models = [model for model in config.EMBEDDING_MODELS 
+        embedding_models = config.get_embedding_models() if config.get_embedding_models() else []
+        vertex_embed_models = [model for model in embedding_models 
                               if any(provider in model.lower() for provider in ["vertex", "google", "textembedding"])]
         
         if not vertex_embed_models:
@@ -481,10 +489,11 @@ class TestResponseNormalization:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_MPV_RESP_CHAT_CONTENT_BEDROCK_001: Test Bedrock response normalization"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic", "claude"])]
         
         if not bedrock_models:
@@ -532,10 +541,11 @@ class TestResponseNormalization:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_MPV_RESP_CHAT_CONTENT_VERTEXAI_001: Test Vertex AI response normalization"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini", "bison"])]
         
         if not vertex_models:
@@ -577,10 +587,11 @@ class TestResponseNormalization:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_MPV_RESP_CHAT_USAGE_BEDROCK_001: Test Bedrock usage metric normalization"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic"])]
         
         if not bedrock_models:
@@ -628,10 +639,11 @@ class TestResponseNormalization:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_MPV_RESP_CHAT_USAGE_VERTEXAI_001: Test Vertex AI usage metric normalization"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini"])]
         
         if not vertex_models:
@@ -667,10 +679,11 @@ class TestResponseNormalization:
                                                        embedding_auth_headers: Dict[str, str],
                                                        make_request):
         """FV_MPV_RESP_EMBED_VECTOR_BEDROCK_001: Test Bedrock embedding normalization"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_embed_models = [model for model in config.EMBEDDING_MODELS 
+        embedding_models = config.get_embedding_models() if config.get_embedding_models() else []
+        bedrock_embed_models = [model for model in embedding_models 
                                if any(provider in model.lower() for provider in ["bedrock", "titan", "cohere"])]
         
         if not bedrock_embed_models:
@@ -716,10 +729,11 @@ class TestResponseNormalization:
                                                         embedding_auth_headers: Dict[str, str],
                                                         make_request):
         """FV_MPV_RESP_EMBED_VECTOR_VERTEXAI_001: Test Vertex AI embedding normalization"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_embed_models = [model for model in config.EMBEDDING_MODELS 
+        embedding_models = config.get_embedding_models() if config.get_embedding_models() else []
+        vertex_embed_models = [model for model in embedding_models 
                               if any(provider in model.lower() for provider in ["vertex", "textembedding"])]
         
         if not vertex_embed_models:
@@ -759,10 +773,11 @@ class TestResponseNormalization:
                                                             auth_headers: Dict[str, str],
                                                             make_request):
         """FV_MPV_RESP_ERROR_TRANSLATION_BEDROCK_001: Test Bedrock error translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic"])]
         
         if not bedrock_models:
@@ -813,10 +828,11 @@ class TestResponseNormalization:
                                                              auth_headers: Dict[str, str],
                                                              make_request):
         """FV_MPV_RESP_ERROR_TRANSLATION_VERTEXAI_001: Test Vertex AI error translation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini"])]
         
         if not vertex_models:
@@ -871,8 +887,8 @@ class TestFeatureParity:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_MPV_FEATURE_UNSUPPORTED_PARAM_001: Test unsupported parameter handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test parameters that might not be supported by all providers
         unsupported_params = [
@@ -894,7 +910,8 @@ class TestFeatureParity:
             }
         ]
         
-        for model in config.CHAT_MODELS[:2]:  # Test first 2 models
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models[:2]:  # Test first 2 models
             for param_test in unsupported_params:
                 description = param_test.pop("description")
                 
@@ -932,12 +949,13 @@ class TestFeatureParity:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_MPV_FEATURE_STREAM_CONSISTENCY_001: Test streaming consistency across providers"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         streaming_results = {}
         
-        for model in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models:
             request = {
                 "model": model,
                 "messages": [{"role": "user", "content": "Count to 3 slowly"}],
@@ -980,10 +998,11 @@ class TestFeatureParity:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_MPV_MODEL_SELECTION_BEDROCK_001: Test Bedrock model routing"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        bedrock_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        bedrock_models = [model for model in chat_models 
                          if any(provider in model.lower() for provider in ["bedrock", "anthropic", "amazon", "claude", "titan"])]
         
         if not bedrock_models:
@@ -1018,10 +1037,11 @@ class TestFeatureParity:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_MPV_MODEL_SELECTION_VERTEXAI_001: Test Vertex AI model routing"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
-        vertex_models = [model for model in config.CHAT_MODELS 
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        vertex_models = [model for model in chat_models 
                         if any(provider in model.lower() for provider in ["vertex", "gemini", "bison", "google"])]
         
         if not vertex_models:
@@ -1060,8 +1080,8 @@ class TestProviderSpecificValidation:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_MPV_PROVIDER_PARAMETER_RANGES_001: Test provider-specific parameter ranges"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test parameter ranges that differ between providers
         parameter_range_tests = [
@@ -1078,7 +1098,8 @@ class TestProviderSpecificValidation:
         
         provider_results = {}
         
-        for model in config.CHAT_MODELS[:3]:  # Test first 3 models
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models[:3]:  # Test first 3 models
             provider_results[model] = {}
             
             for test in parameter_range_tests:
@@ -1118,8 +1139,8 @@ class TestProviderSpecificValidation:
                                                              auth_headers: Dict[str, str],
                                                              make_request):
         """FV_MPV_PROVIDER_CONSISTENCY_VALIDATION_001: Test cross-provider consistency"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test same request across all providers
         consistency_prompt = "What is 2+2?"
@@ -1131,7 +1152,8 @@ class TestProviderSpecificValidation:
         
         model_responses = {}
         
-        for model in config.CHAT_MODELS:
+        chat_models = config.get_chat_models() if config.get_chat_models() else []
+        for model in chat_models:
             request = {"model": model, **consistency_request}
             
             response = await make_request(

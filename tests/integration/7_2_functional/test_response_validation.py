@@ -23,8 +23,8 @@ class TestSuccessResponseValidation:
                                           auth_headers: Dict[str, str],
                                           make_request):
         """FV_RESP_MODELS_LIST_001: Test /models response structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         response = await make_request(
             http_client, "GET", "/api/v1/models",
@@ -74,8 +74,8 @@ class TestSuccessResponseValidation:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_RESP_CHAT_SUCCESS_001: Test chat completion response structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -155,8 +155,8 @@ class TestSuccessResponseValidation:
                                               multimodal_fixtures,
                                               make_request):
         """FV_RESP_CHAT_MULTIMODAL_001: Test multimodal response structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Get test image
         test_image = multimodal_fixtures.get_test_image_base64()
@@ -214,8 +214,8 @@ class TestSuccessResponseValidation:
                                             embedding_auth_headers: Dict[str, str],
                                             make_request):
         """FV_RESP_EMBED_SUCCESS_001: Test embedding response structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_embedding_model(0),
@@ -287,8 +287,8 @@ class TestErrorResponseValidation:
                                             auth_headers: Dict[str, str],
                                             make_request):
         """FV_RESP_ERROR_GENERIC_001: Test generic error response structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Trigger generic error with invalid model
         request = {
@@ -334,8 +334,8 @@ class TestErrorResponseValidation:
                                                  auth_headers: Dict[str, str],
                                                  make_request):
         """FV_RESP_ERROR_422_PYDANTIC_001: Test Pydantic validation error structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Trigger Pydantic validation error
         request = {
@@ -378,8 +378,8 @@ class TestErrorResponseValidation:
                                              auth_headers: Dict[str, str],
                                              make_request):
         """FV_RESP_ERROR_PROVIDER_001: Test provider error response structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Trigger provider-level error with extreme parameters
         request = {
@@ -417,8 +417,8 @@ class TestErrorResponseValidation:
     async def test_fv_resp_error_authentication_001(self, http_client: httpx.AsyncClient,
                                                    make_request):
         """FV_RESP_ERROR_AUTHENTICATION_001: Test authentication error structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with invalid API key
         invalid_headers = {"Authorization": "Bearer invalid_api_key_test"}
@@ -460,8 +460,8 @@ class TestStreamingResponseValidation:
                                             auth_headers: Dict[str, str],
                                             make_request):
         """FV_RESP_STREAM_FORMAT_001: Test SSE format validation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -534,8 +534,8 @@ class TestStreamingResponseValidation:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_RESP_STREAM_CHUNK_SCHEMA_001: Test streaming chunk schema"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -602,8 +602,8 @@ class TestStreamingResponseValidation:
                                                  auth_headers: Dict[str, str],
                                                  make_request):
         """FV_RESP_STREAM_TERMINATION_001: Test streaming termination"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -671,8 +671,8 @@ class TestUsageMetrics:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_RESP_USAGE_CHAT_NONSTREAM_001: Test chat usage metrics"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -717,8 +717,8 @@ class TestUsageMetrics:
                                           embedding_auth_headers: Dict[str, str],
                                           make_request):
         """FV_RESP_USAGE_EMBED_001: Test embedding usage metrics"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_embedding_model(0),
@@ -761,8 +761,8 @@ class TestUsageMetrics:
                                                 auth_headers: Dict[str, str],
                                                 make_request):
         """FV_RESP_USAGE_CHAT_STREAM_001: Test streaming usage metrics"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -826,8 +826,8 @@ class TestUsageMetrics:
                                                multimodal_fixtures,
                                                make_request):
         """FV_RESP_USAGE_MULTIMODAL_001: Test multimodal usage metrics"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         test_image = multimodal_fixtures.get_test_image_base64()
         
@@ -879,8 +879,8 @@ class TestHTTPHeaders:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_RESP_HEADERS_CHAT_001: Test JSON response headers"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -928,8 +928,8 @@ class TestHTTPHeaders:
                                              auth_headers: Dict[str, str],
                                              make_request):
         """FV_RESP_HEADERS_STREAM_001: Test streaming response headers"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),

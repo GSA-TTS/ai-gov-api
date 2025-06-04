@@ -23,8 +23,8 @@ class TestSessionManagement:
                                                  auth_headers: Dict[str, str],
                                                  make_request):
         """FV_DBM_SESSION_PER_REQUEST_001: Verify session lifecycle per request"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Make multiple requests to verify session isolation
         requests = [
@@ -78,8 +78,8 @@ class TestSessionManagement:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_DBM_SESSION_ERROR_HANDLING_001: Test session handling during errors"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that errors don't break subsequent requests (session cleanup)
         error_inducing_requests = [
@@ -128,8 +128,8 @@ class TestSessionManagement:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_DBM_SESSION_POOL_EXHAUSTION_001: Test connection pool stress behavior"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Create concurrent requests to stress the connection pool
         async def concurrent_request(request_id: int):
@@ -169,8 +169,8 @@ class TestSessionManagement:
                                                            auth_headers: Dict[str, str],
                                                            make_request):
         """FV_DBM_SESSION_ROLLBACK_ON_EXCEPTION_001: Verify automatic rollback on exceptions"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that system recovers from exceptions without state corruption
         
@@ -216,7 +216,7 @@ class TestTransactionIntegrity:
                                                     admin_auth_headers: Dict[str, str],
                                                     make_request):
         """FV_DBM_TX_USER_CREATE_SUCCESS_001: Test successful user/key creation transaction"""
-        if not config.ENABLE_FUNCTIONAL_TESTS or not admin_auth_headers:
+        if not admin_auth_headers:
             pytest.skip("Admin functional tests disabled or no admin access")
         
         # Test user creation workflow
@@ -270,7 +270,7 @@ class TestTransactionIntegrity:
                                                      admin_auth_headers: Dict[str, str],
                                                      make_request):
         """FV_DBM_TX_USER_CREATE_ROLLBACK_001: Test transaction rollback on failure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS or not admin_auth_headers:
+        if not admin_auth_headers:
             pytest.skip("Admin functional tests disabled or no admin access")
         
         # Test with invalid user data that should cause rollback
@@ -319,7 +319,7 @@ class TestTransactionIntegrity:
                                                               admin_auth_headers: Dict[str, str],
                                                               make_request):
         """FV_DBM_TX_CONSTRAINT_VIOLATION_HANDLING_001: Test constraint violation handling"""
-        if not config.ENABLE_FUNCTIONAL_TESTS or not admin_auth_headers:
+        if not admin_auth_headers:
             pytest.skip("Admin functional tests disabled or no admin access")
         
         # Test duplicate user creation (should violate unique constraint)
@@ -370,8 +370,8 @@ class TestTransactionIntegrity:
                                                     cost_tracking,
                                                     make_request):
         """FV_DBM_TX_BILLING_RECORD_FAIL_001: Test billing transaction failures"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that API requests work even if billing records fail
         # (Billing should not block core functionality)
@@ -409,8 +409,8 @@ class TestMigrationTests:
                                                auth_headers: Dict[str, str],
                                                make_request):
         """FV_DBM_MIGRATE_APPLY_ALL_001: Test all Alembic migrations apply successfully"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that the system is working with current migration state
         # This indirectly verifies migrations have been applied successfully
@@ -461,8 +461,8 @@ class TestMigrationTests:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_DBM_MIGRATE_NEW_MODEL_FIELD_001: Test adding non-nullable fields"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Verify that current model structure supports required operations
         # This tests that migrations for adding fields have been handled correctly
@@ -505,8 +505,8 @@ class TestMigrationTests:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_DBM_MIGRATE_DATA_MIGRATION_001: Test data transformation migrations"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that data has been properly migrated and is accessible
         # This verifies that data transformation migrations have completed successfully
@@ -541,8 +541,8 @@ class TestConcurrencyTests:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_DBM_CONCURRENCY_KEY_LOOKUP_001: Test concurrent API key lookups"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test concurrent API key validation
         async def key_lookup_request():
@@ -573,7 +573,7 @@ class TestConcurrencyTests:
                                                        admin_auth_headers: Dict[str, str],
                                                        make_request):
         """FV_DBM_CONCURRENCY_USER_CREATION_001: Test concurrent user creation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS or not admin_auth_headers:
+        if not admin_auth_headers:
             pytest.skip("Admin functional tests disabled or no admin access")
         
         # Test concurrent user creation
@@ -623,8 +623,8 @@ class TestConcurrencyTests:
                                                            auth_headers: Dict[str, str],
                                                            make_request):
         """FV_DBM_CONCURRENCY_SESSION_ISOLATION_001: Test session isolation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that concurrent requests have isolated sessions
         async def isolated_request(request_id: int):
@@ -669,8 +669,8 @@ class TestConcurrencyTests:
                                                            auth_headers: Dict[str, str],
                                                            make_request):
         """FV_DBM_CONCURRENCY_CONNECTION_CLEANUP_001: Test connection cleanup under load"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test that connections are properly cleaned up after many requests
         async def cleanup_test_request(request_id: int):

@@ -23,8 +23,8 @@ class TestRequestLogging:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_LOG_REQUEST_CORRELATION_ID_001: Test request correlation ID generation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -63,8 +63,8 @@ class TestRequestLogging:
                                                auth_headers: Dict[str, str],
                                                make_request):
         """FV_LOG_REQUEST_START_END_001: Test request start/end logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         start_time = time.time()
         
@@ -102,8 +102,8 @@ class TestRequestLogging:
                                                auth_headers: Dict[str, str],
                                                make_request):
         """FV_LOG_REQUEST_BODY_SIZE_001: Test request size logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with different sized requests
         request_sizes = [
@@ -136,8 +136,8 @@ class TestRequestLogging:
                                         auth_headers: Dict[str, str],
                                         make_request):
         """FV_LOG_USER_AGENT_001: Test User-Agent logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with custom User-Agent
         custom_headers = dict(auth_headers)
@@ -163,8 +163,8 @@ class TestRequestLogging:
                                         auth_headers: Dict[str, str],
                                         make_request):
         """FV_LOG_IP_ADDRESS_001: Test IP address logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with X-Forwarded-For header
         headers_with_forwarded = dict(auth_headers)
@@ -195,8 +195,8 @@ class TestResponseLogging:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_LOG_RESPONSE_STATUS_CODES_001: Test response status code logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various response scenarios
         test_scenarios = [
@@ -244,8 +244,8 @@ class TestResponseLogging:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_LOG_RESPONSE_SIZE_001: Test response size logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test different response sizes
         response_size_tests = [
@@ -289,8 +289,8 @@ class TestResponseLogging:
                                               auth_headers: Dict[str, str],
                                               make_request):
         """FV_LOG_RESPONSE_HEADERS_001: Test response header logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -329,8 +329,8 @@ class TestUsageMetricsLogging:
                                          auth_headers: Dict[str, str],
                                          make_request):
         """FV_LOG_TOKEN_USAGE_001: Test token usage logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -367,8 +367,8 @@ class TestUsageMetricsLogging:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_LOG_MODEL_VERSION_001: Test model version logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -398,8 +398,8 @@ class TestUsageMetricsLogging:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_LOG_API_KEY_SCOPE_001: Test API key scope logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with different endpoints to verify scope logging
         endpoints_tests = [
@@ -441,8 +441,8 @@ class TestErrorLogging:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_LOG_ERROR_DETAILS_001: Test error detail logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various error conditions
         error_scenarios = [
@@ -488,8 +488,8 @@ class TestErrorLogging:
                                              auth_headers: Dict[str, str],
                                              make_request):
         """FV_LOG_PROVIDER_ERRORS_001: Test provider error logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with potentially problematic provider requests
         provider_error_scenarios = [
@@ -527,8 +527,8 @@ class TestErrorLogging:
     async def test_fv_log_security_events_001(self, http_client: httpx.AsyncClient,
                                              make_request):
         """FV_LOG_SECURITY_EVENTS_001: Test security event logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various security-related scenarios
         security_scenarios = [
@@ -572,8 +572,8 @@ class TestPerformanceMonitoring:
                                            auth_headers: Dict[str, str],
                                            make_request):
         """FV_LOG_RESPONSE_TIME_001: Test response time monitoring"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test different request types for timing
         timing_tests = [
@@ -631,8 +631,8 @@ class TestPerformanceMonitoring:
                                         auth_headers: Dict[str, str],
                                         make_request):
         """FV_LOG_THROUGHPUT_001: Test throughput monitoring"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         import asyncio
         
@@ -686,8 +686,8 @@ class TestPerformanceMonitoring:
                                             auth_headers: Dict[str, str],
                                             make_request):
         """FV_LOG_RESOURCE_USAGE_001: Test resource usage monitoring"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test different resource-intensive scenarios
         resource_tests = [
@@ -744,8 +744,8 @@ class TestComplianceLogging:
                                          auth_headers: Dict[str, str],
                                          make_request):
         """FV_LOG_AUDIT_TRAIL_001: Test audit trail logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various operations that should be audited
         audit_operations = [
@@ -782,8 +782,8 @@ class TestComplianceLogging:
                                             auth_headers: Dict[str, str],
                                             make_request):
         """FV_LOG_DATA_RETENTION_001: Test data retention compliance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test requests with sensitive content
         sensitive_requests = [
@@ -822,8 +822,8 @@ class TestComplianceLogging:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_LOG_REGULATORY_COMPLIANCE_001: Test regulatory compliance logging"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test operations requiring compliance logging
         compliance_tests = [

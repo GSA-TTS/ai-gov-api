@@ -22,8 +22,8 @@ class TestPreRuntimeProtectionVerification:
     @pytest.mark.asyncio
     async def test_fv_prp_openapi_accessibility_001(self, http_client: httpx.AsyncClient):
         """FV_PRP_OPENAPI_ACCESSIBILITY_001: Verify /openapi.json endpoint accessibility and validity"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test OpenAPI endpoint accessibility
         response = await http_client.get(f"{config.BASE_URL}/openapi.json")
@@ -66,8 +66,8 @@ class TestPreRuntimeProtectionVerification:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_PRP_PARAM_CHAT_MAXTOKENS_001: Verify max_tokens parameter is honored by backend"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test small max_tokens value
         small_tokens_request = {
@@ -103,8 +103,8 @@ class TestPreRuntimeProtectionVerification:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_PRP_RESP_FIELD_CHAT_USAGE_001: Verify usage.completion_tokens field presence and type"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -146,8 +146,8 @@ class TestPreRuntimeProtectionVerification:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_PRP_ENUM_CHAT_FINISHREASON_001: Verify finish_reason enum values compliance"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Valid finish_reason values according to OpenAI API spec
         valid_finish_reasons = ["stop", "length", "content_filter", "tool_calls", "function_call"]
@@ -201,8 +201,8 @@ class TestPreRuntimeProtectionVerification:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_PRP_ENDPOINT_MODELS_AVAILABILITY_001: Verify /models endpoint availability and structure"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         response = await make_request(
             http_client, "GET", "/api/v1/models",
@@ -235,8 +235,8 @@ class TestPreRuntimeProtectionVerification:
     async def test_fv_prp_resp_status_code_auth_001(self, http_client: httpx.AsyncClient,
                                                    make_request):
         """FV_PRP_RESP_STATUS_CODE_AUTH_001: Verify 401 status for unauthenticated requests"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test unauthenticated request
         response = await make_request(
@@ -276,8 +276,8 @@ class TestPreRuntimeProtectionVerification:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_PRP_PARAM_VALIDATION_CONSTRAINT_001: Verify parameter constraint enforcement"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test various parameter constraint violations
         constraint_violations = [
@@ -353,8 +353,8 @@ class TestPreRuntimeProtectionVerification:
     @pytest.mark.asyncio
     async def test_fv_prp_schema_version_consistency_001(self, http_client: httpx.AsyncClient):
         """FV_PRP_SCHEMA_VERSION_CONSISTENCY_001: Verify OpenAPI schema version consistency"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Fetch OpenAPI specification
         response = await http_client.get(f"{config.BASE_URL}/openapi.json")
@@ -392,8 +392,8 @@ class TestPreRuntimeProtectionVerification:
     async def test_fv_prp_schema_completeness_001(self, http_client: httpx.AsyncClient,
                                                  auth_headers: Dict[str, str]):
         """FV_PRP_SCHEMA_COMPLETENESS_001: Verify all endpoints are documented in OpenAPI"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Fetch OpenAPI specification
         response = await http_client.get(f"{config.BASE_URL}/openapi.json")
@@ -463,8 +463,8 @@ class TestPreRuntimeProtectionVerification:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_PRP_RESPONSE_CONTENT_TYPE_001: Verify correct Content-Type headers"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test JSON endpoints
         json_endpoints = [
@@ -528,8 +528,8 @@ class TestPreRuntimeProtectionVerification:
                                                    auth_headers: Dict[str, str],
                                                    make_request):
         """FV_PRP_ERROR_RESPONSE_FORMAT_001: Verify error response format consistency"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test different error conditions
         error_scenarios = [
@@ -606,8 +606,8 @@ class TestPreRuntimeProtectionVerification:
                                                           auth_headers: Dict[str, str],
                                                           make_request):
         """FV_PRP_MULTIMODAL_SCHEMA_VALIDATION_001: Verify multimodal content schema validation"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test valid image data URI (small 1x1 PNG)
         valid_image_data_uri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGAWwmOFQAAAABJRU5ErkJggg=="

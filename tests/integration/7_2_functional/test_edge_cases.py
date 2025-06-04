@@ -23,8 +23,8 @@ class TestEmptyNullInputs:
                                                  auth_headers: Dict[str, str],
                                                  make_request):
         """FV_EDGE_EMPTY_CHAT_CONTENT_001: Test empty message content"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         empty_content_requests = [
             # Completely empty string
@@ -77,8 +77,8 @@ class TestEmptyNullInputs:
                                                     embedding_auth_headers: Dict[str, str],
                                                     make_request):
         """FV_EDGE_EMPTY_EMBED_INPUT_STR_001: Test empty embedding input string"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         empty_input_requests = [
             # Empty string
@@ -123,8 +123,8 @@ class TestEmptyNullInputs:
                                                      embedding_auth_headers: Dict[str, str],
                                                      make_request):
         """FV_EDGE_EMPTY_EMBED_INPUT_LIST_001: Test empty string in embedding list"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         empty_list_requests = [
             # Empty list
@@ -168,8 +168,8 @@ class TestUnicodeSpecialCharacters:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_EDGE_UNICODE_CHAT_PROMPT_001: Test Unicode characters in chat prompts"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         unicode_prompts = [
             # Emoji
@@ -181,7 +181,7 @@ class TestUnicodeSpecialCharacters:
             # Math symbols
             "Calculate: ∑(n=1 to ∞) 1/n² = π²/6",
             # Special punctuation
-            "What's the meaning of "life"? It's quite… complex!",
+            "What's the meaning of \"life\"? It's quite… complex!",
             # Mixed Unicode
             "Café naïve résumé 北京 🌟 ∞ →"
         ]
@@ -216,8 +216,8 @@ class TestUnicodeSpecialCharacters:
                                                   embedding_auth_headers: Dict[str, str],
                                                   make_request):
         """FV_EDGE_UNICODE_EMBED_INPUT_001: Test Unicode in embedding inputs"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         unicode_inputs = [
             "Café résumé naïve",
@@ -257,8 +257,8 @@ class TestUnicodeSpecialCharacters:
                                                auth_headers: Dict[str, str],
                                                make_request):
         """FV_EDGE_UNICODE_RTL_CHAT_001: Test Right-to-Left text"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         rtl_prompts = [
             # Arabic
@@ -295,8 +295,8 @@ class TestUnicodeSpecialCharacters:
                                                          auth_headers: Dict[str, str],
                                                          make_request):
         """FV_EDGE_UNICODE_CONTROL_CHARS_CHAT_001: Test control characters"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         control_char_prompts = [
             # Tab and newline
@@ -338,8 +338,8 @@ class TestUnicodeSpecialCharacters:
                                                  multimodal_fixtures,
                                                  make_request):
         """FV_EDGE_UNICODE_MULTIMODAL_001: Test Unicode in multimodal content"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Get test image
         test_image = multimodal_fixtures.get_test_image_base64()
@@ -407,8 +407,8 @@ class TestLargePayloads:
                                                 auth_headers: Dict[str, str],
                                                 make_request):
         """FV_EDGE_LARGE_CHAT_PROMPT_001: Test very long prompts"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Generate increasingly large prompts
         large_prompts = [
@@ -456,8 +456,8 @@ class TestLargePayloads:
                                                       auth_headers: Dict[str, str],
                                                       make_request):
         """FV_EDGE_LARGE_CHAT_NUM_MESSAGES_001: Test many messages in array"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with increasing number of messages
         message_counts = [10, 50, 100]
@@ -496,8 +496,8 @@ class TestLargePayloads:
                                                       embedding_auth_headers: Dict[str, str],
                                                       make_request):
         """FV_EDGE_LARGE_EMBED_INPUT_BATCH_001: Test large embedding batches"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with increasing batch sizes
         batch_sizes = [5, 20, 50]
@@ -532,8 +532,8 @@ class TestLargePayloads:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_EDGE_LARGE_REQUEST_SIZE_LIMIT_001: Test request size limits"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Create extremely large request (beyond reasonable limits)
         very_large_content = "X" * 100000  # 100K characters
@@ -568,8 +568,8 @@ class TestLargePayloads:
                                                      multimodal_fixtures,
                                                      make_request):
         """FV_EDGE_LARGE_MULTIMODAL_IMAGE_001: Test oversized images"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Create oversized image data (simulate large image)
         large_image_data = base64.b64encode(b"X" * 50000).decode()  # 50KB of data
@@ -622,8 +622,8 @@ class TestConcurrentRequests:
                                                        auth_headers: Dict[str, str],
                                                        make_request):
         """FV_EDGE_CONCURRENT_CHAT_SAME_KEY_001: Test concurrent chat requests with same key"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         import asyncio
         
@@ -672,8 +672,8 @@ class TestConcurrentRequests:
                                                         embedding_auth_headers: Dict[str, str],
                                                         make_request):
         """FV_EDGE_CONCURRENT_EMBED_SAME_KEY_001: Test concurrent embedding requests"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         import asyncio
         
@@ -722,8 +722,8 @@ class TestMalformedData:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_EDGE_MALFORMED_MESSAGE_ROLE_001: Test invalid message roles"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         malformed_role_requests = [
             # Invalid role
@@ -776,8 +776,8 @@ class TestMalformedData:
                                                      auth_headers: Dict[str, str],
                                                      make_request):
         """FV_EDGE_MALFORMED_CHOICE_INDEX_001: Test choice indexing with n>1"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         # Test with n parameter > 1 (multiple choices)
         request = {
@@ -825,8 +825,8 @@ class TestMalformedData:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_EDGE_MALFORMED_MULTIMODAL_DATA_001: Test malformed image data URIs"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         malformed_multimodal_requests = [
             # Invalid base64 data
@@ -906,8 +906,8 @@ class TestParameterEdgeCases:
                                                     auth_headers: Dict[str, str],
                                                     make_request):
         """FV_EDGE_PARAM_MAX_TOKENS_ZERO_001: Test max_tokens=0"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         request = {
             "model": config.get_chat_model(0),
@@ -939,8 +939,8 @@ class TestParameterEdgeCases:
                                                         auth_headers: Dict[str, str],
                                                         make_request):
         """FV_EDGE_PARAM_TEMPERATURE_EXTREME_001: Test extreme temperature values"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         extreme_temps = [-1.0, 3.0, 100.0, -0.5]
         
@@ -976,8 +976,8 @@ class TestParameterEdgeCases:
                                                   auth_headers: Dict[str, str],
                                                   make_request):
         """FV_EDGE_PARAM_TOP_P_INVALID_001: Test invalid top_p values"""
-        if not config.ENABLE_FUNCTIONAL_TESTS:
-            pytest.skip("Functional tests disabled")
+        # Functional tests always run unless explicitly disabled via markers
+        pass
         
         invalid_top_p_values = [-0.1, 1.5, 2.0, -1.0]
         
