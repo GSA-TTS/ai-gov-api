@@ -625,11 +625,11 @@ class TestBFLALLMFunctionAuthorization:
         # Test chat completions with various insufficient scopes
         insufficient_scope_scenarios = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_EMBEDDING_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.EMBEDDING_API_KEY}"},
                 "description": "API key with only models:embedding scope"
             },
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_ADMIN_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.ADMIN_API_KEY}"},
                 "description": "API key with only admin scope"
             },
             {
@@ -677,11 +677,11 @@ class TestBFLALLMFunctionAuthorization:
         # Test embeddings with various insufficient scopes
         insufficient_scope_scenarios = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.API_KEY}"},
                 "description": "API key with only models:inference scope"
             },
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_ADMIN_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.ADMIN_API_KEY}"},
                 "description": "API key with only admin scope"
             },
             {
@@ -728,15 +728,15 @@ class TestBFLALLMFunctionAuthorization:
         # Test models endpoint with various scopes
         scope_scenarios = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.API_KEY}"},
                 "description": "API key with models:inference scope"
             },
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_EMBEDDING_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.EMBEDDING_API_KEY}"},
                 "description": "API key with models:embedding scope"
             },
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_ADMIN_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.ADMIN_API_KEY}"},
                 "description": "API key with admin scope"
             },
             {

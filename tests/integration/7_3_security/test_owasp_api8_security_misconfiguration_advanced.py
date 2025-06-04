@@ -114,7 +114,10 @@ class TestOWASPAPI8SecurityMisconfigurationAdvanced:
             }
             
             # Test preflight request
-            response = await http_client.options("/api/v1/chat/completions", headers=headers)
+            response = await make_request(
+                http_client, "OPTIONS", "/api/v1/chat/completions", 
+                headers, track_cost=False
+            )
             
             # Validate CORS configuration
             validation_result = security_validator.validate_cors_configuration(

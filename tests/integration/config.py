@@ -141,6 +141,18 @@ class TestConfig:
             pytest.skip(f"Embedding model index {index} not available")
         return self.EMBEDDING_MODELS[index].strip()
     
+    def get_chat_models(self) -> List[str]:
+        """Get all chat models"""
+        if not self.CHAT_MODELS:
+            pytest.skip("No chat models configured")
+        return [model.strip() for model in self.CHAT_MODELS]
+    
+    def get_embedding_models(self) -> List[str]:
+        """Get all embedding models"""
+        if not self.EMBEDDING_MODELS:
+            pytest.skip("No embedding models configured")
+        return [model.strip() for model in self.EMBEDDING_MODELS]
+    
     def should_run_security_tests(self) -> bool:
         """Check if security tests should run"""
         return self.ENABLE_SECURITY_TESTS

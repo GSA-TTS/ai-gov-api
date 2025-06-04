@@ -300,3 +300,36 @@ class MultiModalFixtures:
         buffer = io.BytesIO()
         img.save(buffer, format='PNG')
         return buffer.getvalue()
+    
+    def get_base64_image(self, format_type: str = 'PNG', size: tuple = (100, 100)) -> str:
+        """Get a base64 encoded test image"""
+        img = Image.new('RGB', size, color='green')
+        buffer = io.BytesIO()
+        img.save(buffer, format=format_type)
+        img_data = buffer.getvalue()
+        img_b64 = base64.b64encode(img_data).decode('utf-8')
+        mime_type = f"image/{format_type.lower()}"
+        return f"data:{mime_type};base64,{img_b64}"
+    
+    def generate_large_image_data(self, size_mb: int = 5) -> str:
+        """Generate large image data for testing storage limits"""
+        # Calculate approximate size to create
+        target_size = size_mb * 1024 * 1024  # Convert MB to bytes
+        
+        # Create a large image (PNG compression affects final size)
+        width = height = int((target_size / 3) ** 0.5)  # Rough calculation for RGB
+        img = Image.new('RGB', (width, height), color='red')
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        img_data = buffer.getvalue()
+        
+        # If not large enough, create a less compressed version
+        if len(img_data) < target_size:
+            img = Image.new('RGB', (width * 2, height * 2), color='red')
+            buffer = io.BytesIO()
+            img.save(buffer, format='BMP')  # BMP is less compressed
+            img_data = buffer.getvalue()
+        
+        img_b64 = base64.b64encode(img_data).decode('utf-8')
+        return f"data:image/png;base64,{img_b64}"

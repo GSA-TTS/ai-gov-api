@@ -26,7 +26,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """Create an HTTP client for testing"""
     app_config.validate()
@@ -247,6 +247,12 @@ def make_request():
             response = await client.put(url, headers=headers, json=data)
         elif method.upper() == "DELETE":
             response = await client.delete(url, headers=headers)
+        elif method.upper() == "OPTIONS":
+            response = await client.options(url, headers=headers)
+        elif method.upper() == "HEAD":
+            response = await client.head(url, headers=headers)
+        elif method.upper() == "PATCH":
+            response = await client.patch(url, headers=headers, json=data)
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         

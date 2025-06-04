@@ -449,3 +449,59 @@ class SecurityValidator:
             "issue_count": total_issues,
             "high_severity_count": high_severity_count
         }
+    
+    def generate_manipulated_api_key_headers(self, base_key: str) -> Dict[str, str]:
+        """Generate manipulated API key headers for testing"""
+        manipulated_key = base_key[:-5] + "MANIP"  # Simple manipulation
+        return {"Authorization": f"Bearer {manipulated_key}"}
+    
+    def generate_api_key_with_state(self, base_key: str, state: str = "expired") -> Dict[str, str]:
+        """Generate API key headers with specific state for testing"""
+        if state == "expired":
+            # Simulate expired key by modifying it
+            modified_key = f"expired_{base_key}"
+        elif state == "revoked":
+            modified_key = f"revoked_{base_key}"
+        elif state == "suspended":
+            modified_key = f"suspended_{base_key}"
+        else:
+            modified_key = base_key
+        
+        return {"Authorization": f"Bearer {modified_key}"}
+    
+    def generate_tampered_api_key(self, base_key: str) -> Dict[str, str]:
+        """Generate tampered API key headers for testing"""
+        # Simple tampering - replace some characters
+        tampered_key = base_key.replace('a', 'x').replace('e', 'y').replace('i', 'z')
+        return {"Authorization": f"Bearer {tampered_key}"}
+    
+    def generate_scoped_api_key(self, scope: str) -> Dict[str, str]:
+        """Generate scoped API key headers for testing"""
+        scoped_key = f"scope_{scope}_test_key_12345"
+        return {"Authorization": f"Bearer {scoped_key}"}
+    
+    def validate_concurrent_authentication(self, results: List[Dict]) -> Dict[str, Any]:
+        """Validate concurrent authentication test results"""
+        total_requests = len(results)
+        successful_requests = sum(1 for r in results if r.get('success', False))
+        
+        return {
+            "total_requests": total_requests,
+            "successful_requests": successful_requests,
+            "success_rate": successful_requests / total_requests if total_requests > 0 else 0,
+            "validation_passed": successful_requests > 0,
+            "issues": [r for r in results if not r.get('success', False)]
+        }
+    
+    def validate_concurrent_resource_handling(self, results: List[Dict]) -> Dict[str, Any]:
+        """Validate concurrent resource handling test results"""
+        total_requests = len(results)
+        successful_requests = sum(1 for r in results if r.get('status_code', 500) < 500)
+        
+        return {
+            "total_requests": total_requests,
+            "successful_requests": successful_requests,
+            "success_rate": successful_requests / total_requests if total_requests > 0 else 0,
+            "validation_passed": successful_requests > total_requests * 0.5,  # At least 50% should succeed
+            "issues": [r for r in results if r.get('status_code', 500) >= 500]
+        }

@@ -29,11 +29,11 @@ class TestBFLAAdministrativeFunctions:
         # Test token creation with various non-admin scopes
         non_admin_scenarios = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.API_KEY}"},
                 "description": "API key with only models:inference scope"
             },
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_EMBEDDING_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.EMBEDDING_API_KEY}"},
                 "description": "API key with only models:embedding scope"
             },
             {
@@ -84,7 +84,7 @@ class TestBFLAAdministrativeFunctions:
         # Test token activation/deactivation with non-admin keys
         non_admin_scenarios = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.API_KEY}"},
                 "description": "Non-admin API key"
             },
             {
@@ -137,7 +137,7 @@ class TestBFLAUserManagement:
         # Test user creation with non-admin keys
         non_admin_scenarios = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.API_KEY}"},
                 "description": "API key with models:inference scope"
             },
             {
@@ -302,7 +302,7 @@ class TestBFLAAdvancedAuthorization:
         # Test complex scope combinations
         scope_combination_tests = [
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.API_KEY}"},
                 "endpoint": "/api/v1/chat/completions",
                 "method": "POST",
                 "data": {
@@ -314,7 +314,7 @@ class TestBFLAAdvancedAuthorization:
                 "should_succeed": True
             },
             {
-                "headers": {"Authorization": f"Bearer {config.TEST_EMBEDDING_API_KEY}"},
+                "headers": {"Authorization": f"Bearer {config.EMBEDDING_API_KEY}"},
                 "endpoint": "/api/v1/embeddings",
                 "method": "POST",
                 "data": {

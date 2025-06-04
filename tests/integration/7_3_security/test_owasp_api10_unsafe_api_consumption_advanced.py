@@ -497,7 +497,12 @@ class TestOWASPAPI10UnsafeConsumptionAdvanced:
             pytest.skip("Security tests disabled")
         
         import ssl
-        from httpx import ConnectError, TLSError
+        from httpx import ConnectError
+        try:
+            from httpx import TLSError
+        except ImportError:
+            # TLSError might not be available in all httpx versions
+            TLSError = ConnectionError
         
         connection_security_exceptions = [
             ConnectError("SSL: CERTIFICATE_VERIFY_FAILED"),

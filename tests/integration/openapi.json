@@ -1,0 +1,866 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/models": {
+      "get": {
+        "summary": "Models",
+        "operationId": "models_api_v1_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LLMModel"
+                  },
+                  "type": "array",
+                  "title": "Response Models Api V1 Models Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/chat/completions": {
+      "post": {
+        "summary": "Converse",
+        "operationId": "converse_api_v1_chat_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Converse Api V1 Chat Completions Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/embeddings": {
+      "post": {
+        "summary": "Embeddings",
+        "operationId": "embeddings_api_v1_embeddings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbeddingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssistantMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "assistant",
+            "title": "Role",
+            "default": "assistant"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TextContentPart"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content",
+            "description": "The content of the message from the model. Can be a string, a list of text parts"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "AssistantMessage"
+      },
+      "ChatCompletionRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "The model to use for chat completion"
+          },
+          "messages": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/UserMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/SystemMessage"
+                },
+                {
+                  "$ref": "#/components/schemas/AssistantMessage"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "role",
+                "mapping": {
+                  "assistant": "#/components/schemas/AssistantMessage",
+                  "system": "#/components/schemas/SystemMessage",
+                  "user": "#/components/schemas/UserMessage"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Messages",
+            "description": "A list of messages from the conversation so far"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "description": "What sampling temperature: between 0 and 2"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P",
+            "description": "An alternative to sampling with temperature, called nucleus sampling"
+          },
+          "n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N",
+            "description": "How many chat completion choices to generate for each input message"
+          },
+          "stream": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream",
+            "description": "If set, partial message deltas will be sent",
+            "default": false
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop",
+            "description": "Up to 4 sequences where the API will stop generating"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens",
+            "description": "The maximum number of tokens to generate"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2,
+                "minimum": -2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty",
+            "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far",
+            "default": 0
+          },
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2,
+                "minimum": -2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty",
+            "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far",
+            "default": 0
+          },
+          "logit_bias": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logit Bias"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User",
+            "description": "A unique identifier representing your end-user"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "messages"
+        ],
+        "title": "ChatCompletionRequest",
+        "examples": [
+          {
+            "messages": [
+              {
+                "content": "You speak only pirate",
+                "role": "system"
+              },
+              {
+                "content": "Hello!",
+                "role": "user"
+              }
+            ],
+            "model": "gemini-2.0-flash"
+          }
+        ]
+      },
+      "EmbeddingData": {
+        "properties": {
+          "object": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "embedding"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object",
+            "description": "The object type, always 'embedding'.",
+            "default": "embedding"
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Embedding",
+            "description": "The embedding vector, which is a list of floats or a base64 string depending on 'encoding_format'."
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "description": "The index of the embedding in the list, corresponding to the input index."
+          }
+        },
+        "type": "object",
+        "required": [
+          "embedding",
+          "index"
+        ],
+        "title": "EmbeddingData",
+        "description": "A single embedding object within the response data array."
+      },
+      "EmbeddingRequest": {
+        "properties": {
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Input",
+            "description": "Input text to embed, encoded as a string or array of strings. Each input must not exceed the max input tokens for the model."
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "ID of the model to use (e.g., 'text-embedding-3-small', 'text-embedding-ada-002')."
+          },
+          "encodingFormat": {
+            "type": "string",
+            "const": "float",
+            "title": "Encodingformat",
+            "description": "The format to return the embeddings in. Currenly only 'float' is accepted.",
+            "default": "float"
+          },
+          "dimensions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimensions",
+            "description": "The number of dimensions the resulting output embeddings should have. Only supported in some models."
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User",
+            "description": "A unique identifier representing your end-user, which can help OpenAI monitor and detect abuse."
+          },
+          "input_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "search_document",
+                  "search_query",
+                  "classification",
+                  "clustering",
+                  "semantic_similarity"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Type",
+            "description": "Not part of OpenAI spec, but is used in most other models. This allows the model to optimize for specific uses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "model"
+        ],
+        "title": "EmbeddingRequest",
+        "description": "Represents the request payload for the OpenAI Embeddings API.\nReference: https://platform.openai.com/docs/api-reference/embeddings/create",
+        "examples": [
+          {
+            "encodingFormat": "float",
+            "input": "Narcotics cannot still the Tooth That nibbles at the soul",
+            "input_type": "search_document",
+            "model": "cohere_english_v3"
+          }
+        ]
+      },
+      "EmbeddingResponse": {
+        "properties": {
+          "object": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "list"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object",
+            "description": "The object type, typically 'list'.",
+            "default": "list"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EmbeddingData"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "A list of embedding objects, one for each input."
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "The ID of the model used for generating embeddings."
+          },
+          "usage": {
+            "$ref": "#/components/schemas/EmbeddingUsage",
+            "description": "Usage statistics for the request."
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "model",
+          "usage"
+        ],
+        "title": "EmbeddingResponse",
+        "description": "Represents the successful response payload from the OpenAI Embeddings API.\nSee: https://platform.openai.com/docs/api-reference/embeddings/create"
+      },
+      "EmbeddingUsage": {
+        "properties": {
+          "promptTokens": {
+            "type": "integer",
+            "title": "Prompttokens",
+            "description": "The number of tokens in the prompt."
+          },
+          "totalTokens": {
+            "type": "integer",
+            "title": "Totaltokens",
+            "description": "The total number of tokens used in the request (prompt + completion)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "promptTokens",
+          "totalTokens"
+        ],
+        "title": "EmbeddingUsage",
+        "description": "Represents the token usage information for the embedding request."
+      },
+      "FileContent": {
+        "properties": {
+          "file_data": {
+            "type": "string",
+            "format": "base64",
+            "title": "File Data",
+            "description": "File data encoded as Base64 string"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id",
+            "description": "The ID of an uploaded file to use as input"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name",
+            "description": "The name of the file, used when passing the file to the model as a string."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_data"
+        ],
+        "title": "FileContent"
+      },
+      "FileContentPart": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "file",
+            "title": "Type",
+            "default": "file"
+          },
+          "file": {
+            "$ref": "#/components/schemas/FileContent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "FileContentPart",
+        "description": "Represents a file"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImageContentPart": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "image_url",
+            "title": "Type",
+            "default": "image_url"
+          },
+          "image_url": {
+            "$ref": "#/components/schemas/ImageUrl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_url"
+        ],
+        "title": "ImageContentPart",
+        "description": "Represents an image part in a multimodal content list."
+      },
+      "ImageUrl": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "The base64 encoded image data URI."
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "low",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail",
+            "description": "Specifies the detail level of the image.",
+            "default": "auto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "ImageUrl",
+        "description": "Defines the structure for an image URL input.\nTo simplify egress concerns, we don't supprt HTTPS urls at the moment."
+      },
+      "LLMModel": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "capability": {
+            "type": "string",
+            "enum": [
+              "chat",
+              "embedding"
+            ],
+            "title": "Capability"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "capability"
+        ],
+        "title": "LLMModel",
+        "description": "Providers will have an assortment of models they support.\nWhen the app starts it will look the backend's models property\nand expect a list of LLMModel objects. The id will be used in the\nAPI to select the model, and the capability will allow our\ncode to know whether the particular model is capable of what\nwe are asking."
+      },
+      "SystemMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "system",
+            "title": "Role",
+            "default": "system"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TextContentPart"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content",
+            "description": "The content of the message for the system. Can be a string, a list of text parts"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "SystemMessage"
+      },
+      "TextContentPart": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "text",
+            "title": "Type",
+            "default": "text"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TextContentPart",
+        "description": "Represents a text part in a multimodal content list."
+      },
+      "UserMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "const": "user",
+            "title": "Role",
+            "default": "user"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TextContentPart"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ImageContentPart"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FileContentPart"
+                    }
+                  ]
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Content",
+            "description": "The content of the message. Can be a string, a list of content parts (for multimodal input)"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "UserMessage"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
