@@ -305,7 +305,9 @@ class TestPromptInjectionJailbreak:
         
         for description in injection_image_descriptions:
             # Create test image (placeholder - in real test would be actual image with embedded text)
-            test_image = multimodal_fixtures.get_base64_image(f"{description}.jpg")
+            test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+            # Extract just the base64 part
+            test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
             
             request = {
                 "model": config.get_chat_model(0),

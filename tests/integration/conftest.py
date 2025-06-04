@@ -31,12 +31,15 @@ async def http_client():
     """Create an HTTP client for testing"""
     app_config.validate()
     
-    async with httpx.AsyncClient(
+    client = httpx.AsyncClient(
         base_url=app_config.BASE_URL,
         timeout=app_config.TIMEOUT,
         headers={"User-Agent": "GSAi-API-Test-Framework/1.0"}
-    ) as client:
+    )
+    try:
         yield client
+    finally:
+        await client.aclose()
 
 
 @pytest.fixture(scope="session")

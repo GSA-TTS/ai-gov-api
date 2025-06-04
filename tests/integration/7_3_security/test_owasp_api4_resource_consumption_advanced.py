@@ -121,7 +121,7 @@ class TestOWASPAPI4ResourceConsumptionAdvanced:
             {
                 "description": "Large image file processing",
                 "test_type": "large_image",
-                "image_size": "10MB_equivalent",
+                "image_size": 10,  # Size in MB
                 "expected_limit": "image_size"
             },
             {

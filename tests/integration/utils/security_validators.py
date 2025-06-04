@@ -3,7 +3,7 @@ import re
 import json
 import time
 import hashlib
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple, Optional, Union
 import logging
 from urllib.parse import urlparse, parse_qs
 
@@ -450,9 +450,30 @@ class SecurityValidator:
             "high_severity_count": high_severity_count
         }
     
-    def generate_manipulated_api_key_headers(self, base_key: str) -> Dict[str, str]:
+    def generate_manipulated_api_key_headers(self, base_headers: Union[Dict[str, str], str], manipulation_type: str = "default") -> Dict[str, str]:
         """Generate manipulated API key headers for testing"""
-        manipulated_key = base_key[:-5] + "MANIP"  # Simple manipulation
+        # Extract the base key from headers if dict is provided
+        if isinstance(base_headers, dict):
+            auth_header = base_headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                base_key = auth_header[7:]  # Remove "Bearer " prefix
+            else:
+                base_key = auth_header
+        else:
+            base_key = base_headers
+        
+        # Apply different manipulation strategies
+        if manipulation_type == "change_agency_id":
+            manipulated_key = "agency_999_" + base_key[10:] if len(base_key) > 10 else "agency_999_" + base_key
+        elif manipulation_type == "inject_agency_context":
+            manipulated_key = base_key[:-5] + "'; DROP TABLE--"
+        elif manipulation_type == "null_agency_context":
+            manipulated_key = "null_" + base_key
+        elif manipulation_type == "wildcard_agency_access":
+            manipulated_key = "*_agency_" + base_key
+        else:
+            manipulated_key = base_key[:-5] + "MANIP" if len(base_key) > 5 else base_key + "MANIP"
+        
         return {"Authorization": f"Bearer {manipulated_key}"}
     
     def generate_api_key_with_state(self, base_key: str, state: str = "expired") -> Dict[str, str]:
@@ -469,31 +490,88 @@ class SecurityValidator:
         
         return {"Authorization": f"Bearer {modified_key}"}
     
-    def generate_tampered_api_key(self, base_key: str) -> Dict[str, str]:
+    def generate_tampered_api_key(self, base_headers: Union[Dict[str, str], str], tampering_type: str = "default") -> Dict[str, str]:
         """Generate tampered API key headers for testing"""
-        # Simple tampering - replace some characters
-        tampered_key = base_key.replace('a', 'x').replace('e', 'y').replace('i', 'z')
+        # Extract the base key from headers if dict is provided
+        if isinstance(base_headers, dict):
+            auth_header = base_headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                base_key = auth_header[7:]  # Remove "Bearer " prefix
+            else:
+                base_key = auth_header
+        else:
+            base_key = base_headers
+        
+        # Apply different tampering strategies
+        if tampering_type == "prefix_modification":
+            tampered_key = "TAMPERED_" + base_key[5:] if len(base_key) > 5 else "TAMPERED_" + base_key
+        elif tampering_type == "suffix_modification":
+            tampered_key = base_key[:-5] + "_TAMPERED" if len(base_key) > 5 else base_key + "_TAMPERED"
+        elif tampering_type == "character_substitution":
+            tampered_key = base_key[:10] + 'X' + base_key[11:] if len(base_key) > 11 else base_key + 'X'
+        elif tampering_type == "hash_collision":
+            tampered_key = base_key[::-1]  # Reverse the key
+        elif tampering_type == "length_change":
+            tampered_key = base_key[:20] if len(base_key) > 20 else base_key + "PADDING"
+        elif tampering_type == "encoding_change":
+            tampered_key = base_key.upper()
+        else:
+            # Default tampering - replace some characters
+            tampered_key = base_key.replace('a', 'x').replace('e', 'y').replace('i', 'z')
+        
         return {"Authorization": f"Bearer {tampered_key}"}
     
-    def generate_scoped_api_key(self, scope: str) -> Dict[str, str]:
+    def generate_scoped_api_key(self, base_headers: Union[Dict[str, str], str], scope: str = "default") -> Dict[str, str]:
         """Generate scoped API key headers for testing"""
-        scoped_key = f"scope_{scope}_test_key_12345"
+        # Extract the base key from headers if dict is provided
+        if isinstance(base_headers, dict):
+            auth_header = base_headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                base_key = auth_header[7:]  # Remove "Bearer " prefix
+            else:
+                base_key = auth_header
+        else:
+            base_key = base_headers
+        
+        # Create scoped key based on the scope type
+        if scope == "admin":
+            scoped_key = f"admin_scope_{base_key[:10]}_admin" if len(base_key) > 10 else f"admin_scope_{base_key}_admin"
+        elif scope == "embedding":
+            scoped_key = f"embed_scope_{base_key[:10]}_embed" if len(base_key) > 10 else f"embed_scope_{base_key}_embed"
+        elif scope == "chat":
+            scoped_key = f"chat_scope_{base_key[:10]}_chat" if len(base_key) > 10 else f"chat_scope_{base_key}_chat"
+        elif scope == "read":
+            scoped_key = f"read_scope_{base_key[:10]}_read" if len(base_key) > 10 else f"read_scope_{base_key}_read"
+        else:
+            scoped_key = f"scope_{scope}_{base_key[:10]}_test" if len(base_key) > 10 else f"scope_{scope}_{base_key}_test"
+        
         return {"Authorization": f"Bearer {scoped_key}"}
     
-    def validate_concurrent_authentication(self, results: List[Dict]) -> Dict[str, Any]:
+    def validate_concurrent_authentication(self, results: List[Dict], expected_behavior: str = "all_succeed") -> Dict[str, Any]:
         """Validate concurrent authentication test results"""
         total_requests = len(results)
         successful_requests = sum(1 for r in results if r.get('success', False))
+        
+        # Determine if validation passed based on expected behavior
+        if expected_behavior == "all_succeed":
+            validation_passed = successful_requests == total_requests
+        elif expected_behavior == "some_succeed":
+            validation_passed = 0 < successful_requests < total_requests
+        elif expected_behavior == "none_succeed":
+            validation_passed = successful_requests == 0
+        else:
+            validation_passed = successful_requests > 0
         
         return {
             "total_requests": total_requests,
             "successful_requests": successful_requests,
             "success_rate": successful_requests / total_requests if total_requests > 0 else 0,
-            "validation_passed": successful_requests > 0,
+            "validation_passed": validation_passed,
+            "expected_behavior": expected_behavior,
             "issues": [r for r in results if not r.get('success', False)]
         }
     
-    def validate_concurrent_resource_handling(self, results: List[Dict]) -> Dict[str, Any]:
+    def validate_concurrent_resource_handling(self, results: List[Dict], resource_type: str = "general") -> Dict[str, Any]:
         """Validate concurrent resource handling test results"""
         total_requests = len(results)
         successful_requests = sum(1 for r in results if r.get('status_code', 500) < 500)

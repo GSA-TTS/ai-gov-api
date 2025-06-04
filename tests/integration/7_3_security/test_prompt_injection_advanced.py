@@ -44,7 +44,10 @@ class TestPromptInjectionAdvanced:
             "\\\\server\\share\\sensitive.txt"
         ]
         
-        test_image = multimodal_fixtures.get_base64_image("test_image.jpg")
+        # Get a base64 encoded JPEG image
+        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        # Extract just the base64 part
+        test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
         for filename in malicious_filenames:
             request = {
@@ -110,7 +113,10 @@ class TestPromptInjectionAdvanced:
             "test\uff0e\uff0ejpg"  # fullwidth periods
         ]
         
-        test_image = multimodal_fixtures.get_base64_image("test_image.jpg")
+        # Get a base64 encoded JPEG image
+        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        # Extract just the base64 part
+        test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
         for filename in unicode_malicious_filenames:
             request = {
@@ -168,7 +174,10 @@ class TestPromptInjectionAdvanced:
             "\x00" * 100 + "test.jpg",  # Null bytes pattern
         ]
         
-        test_image = multimodal_fixtures.get_base64_image("test_image.jpg")
+        # Get a base64 encoded JPEG image
+        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        # Extract just the base64 part
+        test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
         for filename in long_filenames:
             request = {
@@ -234,7 +243,10 @@ class TestPromptInjectionAdvanced:
             "access_confidential_data.txt"
         ]
         
-        test_image = multimodal_fixtures.get_base64_image("test_image.jpg")
+        # Get a base64 encoded JPEG image
+        test_image_data_uri = multimodal_fixtures.get_base64_image('JPEG')
+        # Extract just the base64 part
+        test_image = test_image_data_uri.split(',')[1] if ',' in test_image_data_uri else test_image_data_uri
         
         for filename in injection_filenames:
             request = {
