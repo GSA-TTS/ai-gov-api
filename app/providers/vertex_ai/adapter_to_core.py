@@ -172,8 +172,6 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
             # ───── function-call parts ─────
             if has_fcall:
                 for idx, p in enumerate(parts):
-                    print("**Part**")
-                    print(idx, p)
                     fcall = getattr(p, "function_call", None)
                     if not fcall:
                         continue
@@ -200,8 +198,6 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
                             arguments=state["args"],
                         ),
                     )
-                    print("Tool call: *** ")
-                    print(tool_call_delta)
                     yield StreamResponse(
                         id=stream_id,
                         created=created_timestamp,
