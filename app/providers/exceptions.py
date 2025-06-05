@@ -37,3 +37,6 @@ class BedrockThrottled(ModelError):
 
 class BedrockUnavailable(ModelError):
     status_code = 503
+
+class VertexValidationError(ModelError):
+    status_code = 400
