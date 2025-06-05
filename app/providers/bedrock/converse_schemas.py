@@ -7,190 +7,244 @@ passing to Bedrocks's converse() method as well as source types to convert back
 to the output of the public API.
 '''
 
-from typing import Optional, Union, List, Literal, Dict, Any
+from typing import Optional, Union, List, Literal, Dict, Any, Sequence
 
 from pydantic import BaseModel, Field, NonNegativeInt, ConfigDict, RootModel
 from pydantic.alias_generators import to_camel
 
+class BaseBedrockModel(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=to_camel,
+        # guarantee round-trips
+        validate_assignment=True,
+    )
+## Basic Content Blocks ##
 
-class ImageSource(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+## Image Block
+class ImageSource(BaseBedrockModel):
     # alias because pydantic does not allow python types as properties
     data: bytes = Field(..., description="Raw image data bytes.", alias="bytes")
 
-class ImagePayload(BaseModel):
+class ImagePayload(BaseBedrockModel):
     format: Literal['jpeg', 'png', 'gif', 'webp'] = Field(..., description="Image format.")
     source: ImageSource
 
-class ContentImageBlock(BaseModel):
+class ContentImageBlock(BaseBedrockModel):
     image: ImagePayload
 
-class SystemContentBlock(BaseModel):
-    # Bedrock allows other fields here that we're ignoring for now
-    # https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_SystemContentBlock.html
-    text: str
-
-class ContentTextBlock(BaseModel):
-    text: str
-
-class DocumentSource(BaseModel):
+## Document Block
+class DocumentSource(BaseBedrockModel):
     data: bytes = Field(..., description="Raw document data bytes.", alias="bytes")
 
-class DocumentPayload(BaseModel):
+class DocumentPayload(BaseBedrockModel):
     format: Literal['pdf', 'csv', 'doc', 'docx', 'xls', 'xlsx', 'html', 'txt', 'md'] = Field(..., description="Document format.")
     name: str = Field(..., description="Name of the document.")
     source: DocumentSource
 
-class ContentDocumentBlock(BaseModel):
+class ContentDocumentBlock(BaseBedrockModel):
     document: DocumentPayload
 
-ContentBlock = Union[ContentTextBlock, ContentImageBlock, ContentDocumentBlock]
+## Plain Text
+class ContentTextBlock(BaseBedrockModel):
+    text: str
+
+# System Block
+class SystemContentBlock(BaseBedrockModel):
+    # Bedrock allows other fields here that we're ignoring for now
+    # https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_SystemContentBlock.html
+    text: str
+
+
+## Block fo passing tool results as json
+class ContentJSONBlock(BaseBedrockModel):
+    json_: Any = Field(alias='json',  serialization_alias='json')
+
+## Tool results are a content type that appears in messages
+## They also have a content list, but it can't be recursive
+## so we need two unions.
+
+
+# For tool use request from the model
+class ToolUseBlockContent(BaseBedrockModel):
+    tool_use_id: str
+    name: str
+    input: Dict[str, Any]
+
+class ToolUseBlock(BaseBedrockModel):
+    tool_use: ToolUseBlockContent
+
+
+# For subsequent reuest when passing tool results back to model
+class ToolResultBlockContent(BaseBedrockModel):
+    tool_use_id: str 
+    content: List[Union["ContentBlock", ContentJSONBlock]]   
+    status: Optional[Literal["error"]] = Field(default=None)
+
+class ToolResultBlock(BaseBedrockModel):
+    tool_result: ToolResultBlockContent
+
+ContentBlock = Union[ContentTextBlock, ContentImageBlock, ContentDocumentBlock, ToolResultBlock, ToolUseBlock]
+
+# Message Level content can also contain tool blocks:
+MessageContentBlock = Union[ContentBlock, ToolResultBlock, ToolUseBlock]
 
 # it's not clear how to deal with OpenAI's other possible roles
 BedrockMessageRole = Literal["user", "assistant"]
 
-class Message(BaseModel):
+class Message(BaseBedrockModel):
     role: BedrockMessageRole
-    content: List[ContentBlock]
+    content: Sequence[MessageContentBlock]
 
-class InferenceConfig(BaseModel):
-    model_config = ConfigDict(
-        populate_by_name=True,
-        alias_generator=to_camel
-    )
+class InferenceConfig(BaseBedrockModel):
     max_tokens: Optional[int] = Field(default=None, description="Maximum number of tokens to generate")
     temperature: Optional[float] = Field(default=None, ge=0, le=1, description="Sampling temperature")
     top_p: Optional[float] = Field(default=None, ge=0, le=1, description="Top-p sampling")
     stop_sequences: Optional[List[str]] = Field(default=None, description="Optional list of stop sequences")
 
-class ConverseRequest(BaseModel):
-    model_config = ConfigDict(
-        # Allows parsing input with either 'inference_config' or 'inferenceConfig'
-        populate_by_name=True,
-        alias_generator=to_camel
-    )
+## -- Bedrock Tool Requuest -- ##
+
+# The innermost bit – Bedrock just defines JSON here
+# https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ToolInputSchema.html
+class ToolInputSchema(BaseBedrockModel):
+    json_: Dict[str, Any] =  Field(alias="json")
+
+class ToolSpecification(BaseBedrockModel):
+    name: str
+    description: Optional[str] = None
+    input_schema: ToolInputSchema
+
+class ToolItem(BaseBedrockModel):
+    tool_spec: ToolSpecification
+
+ToolChoice = Union[
+    Dict[Literal["auto"], Dict[str, object]],
+    Dict[Literal["any"],  Dict[str, object]],
+    Dict[Literal["tool"], Dict[Literal["name"], str]],
+]
+class ToolConfig(BaseBedrockModel):
+    tools: List[ToolItem]
+    tool_choice: Optional[ToolChoice] = None
+
+
+class ConverseRequest(BaseBedrockModel):
     model_id: str = Field(..., exclude=True)
     messages: List[Message]
     system: Optional[List[SystemContentBlock]] = Field(default=None, description="Optional list of system prompts")
     inference_config: Optional[InferenceConfig] = Field(default=None, serialization_alias="inferenceConfig")
+    tool_config: Optional[ToolConfig] = Field(default=None)
 
-class ConverseResponseUsage(BaseModel):
+
+class ConverseResponseUsage(BaseBedrockModel):
     model_config = ConfigDict(
-        # Allows parsing input with either 'inference_config' or 'inferenceConfig'
-        populate_by_name=True,
-        alias_generator=to_camel,
         extra="ignore"
     )
     input_tokens: NonNegativeInt
     output_tokens: NonNegativeInt
     total_tokens: NonNegativeInt
 
-class ConverseResponseOutput(BaseModel):
+class ConverseResponseOutput(BaseBedrockModel):
+    model_config = ConfigDict(extra="allow")
     role: Literal["assistant"]
-    content: List[ContentTextBlock]
+    content: List[Union[ContentTextBlock, ToolUseBlock]]
 
-class ConverseResponse(BaseModel):
+class ConverseResponse(BaseBedrockModel):
         output: dict[Literal["message"], ConverseResponseOutput]
         usage: ConverseResponseUsage
+        stop_reason: Optional[str] = None
 
 # ----- stream response ----
 
 # --- Helper/Nested Models ---
 
-class MessageStartContent(BaseModel):
+class MessageStartContent(BaseBedrockModel):
     role: Literal["assistant"] # This will alway be "assistant" for responses
 
-## Stubbing for later tool use
-class ToolSpec(BaseModel):
-    name: str
-    input_schema: Dict[str, Any] = Field(alias="inputSchema") 
-
-class ToolUseBlock(BaseModel):
-    tool_use_id: str = Field(alias="toolUseId")
-    name: str
-
-class ContentBlockStartDetailsText(BaseModel):
+ 
+class ContentBlockStartDetailsText(BaseBedrockModel):
     pass # Text start is often just an empty object, content comes in delta
 
-class ContentBlockStartDetailsToolUse(BaseModel):
-    tool_use_id: str = Field(alias="toolUseId")
+class ContentBlockStartDetailsToolUse(BaseBedrockModel):
+    tool_use_id: str
     name: str
 
-class ContentBlockStartStart(RootModel[Union[ContentBlockStartDetailsText, ContentBlockStartDetailsToolUse]]):
-    pass
+class StartText(BaseBedrockModel):
+    text: ContentBlockStartDetailsText
 
-class ContentBlockStartContent(BaseModel):
-    content_block_index: int = Field(alias="contentBlockIndex")
-    start: Union[
-        Dict[Literal["text"], ContentBlockStartDetailsText],
-        Dict[Literal["toolUse"], ContentBlockStartDetailsToolUse]
-    ] # The API uses the key ("text" or "toolUse") to discriminate
+class StartToolUse(BaseBedrockModel):
+    tool_use: ContentBlockStartDetailsToolUse
+
+class ContentBlockStartContent(BaseBedrockModel):
+    content_block_index: int
+    start:  Union[StartText, StartToolUse] # The API uses the key ("text" or "toolUse") to discriminate
 
 
-class ContentBlockDeltaDetailsToolUse(BaseModel):
+class ContentBlockDeltaDetailsToolUse(BaseBedrockModel):
     input: str # Tool input is typically a JSON string here
 
-class ContentBlockDeltaContent(BaseModel):
-    content_block_index: int = Field(alias="contentBlockIndex")
-    delta: ContentTextBlock
+class ContentBlockDeltaToolUse(BaseBedrockModel):
+    tool_use: ContentBlockDeltaDetailsToolUse
+    
+class ContentBlockDeltaContent(BaseBedrockModel):
+    content_block_index: int
+    delta: Union[ContentTextBlock, ContentBlockDeltaToolUse]
 
-class ContentBlockStopContent(BaseModel):
-    content_block_index: int = Field(alias="contentBlockIndex")
+class ContentBlockStopContent(BaseBedrockModel):
+    content_block_index: int
 
-class MessageStopContent(BaseModel):
-    stop_reason: str = Field(alias="stopReason")
-    additional_model_response_fields: Optional[Dict[str, Any]] = Field(
-        default=None, alias="additionalModelResponseFields"
-    )
+class MessageStopContent(BaseBedrockModel):
+    stop_reason: str
+    additional_model_response_fields: Optional[Dict[str, Any]] = None
 
-class Metrics(BaseModel):
-    latency_ms: Optional[int] = Field(default=None, alias="latencyMs")
 
-class MetaDataContent(BaseModel):
+class Metrics(BaseBedrockModel):
+    latency_ms: Optional[int] = None
+
+class MetaDataContent(BaseBedrockModel):
     usage: ConverseResponseUsage
     metrics: Metrics
   
 # --- Top-Level Event Models ---
 
-class MessageStartEvent(BaseModel):
-    message_start: MessageStartContent = Field(alias="messageStart")
+class MessageStartEvent(BaseBedrockModel):
+    message_start: MessageStartContent
 
-class ContentBlockStartEvent(BaseModel):
-    content_block_start: ContentBlockStartContent = Field(alias="contentBlockStart")
+class ContentBlockStartEvent(BaseBedrockModel):
+    content_block_start: ContentBlockStartContent 
 
-class ContentBlockDeltaEvent(BaseModel):
-    content_block_delta: ContentBlockDeltaContent = Field(alias="contentBlockDelta")
+class ContentBlockDeltaEvent(BaseBedrockModel):
+    content_block_delta: ContentBlockDeltaContent
 
-class ContentBlockStopEvent(BaseModel):
-    content_block_stop: ContentBlockStopContent = Field(alias="contentBlockStop")
+class ContentBlockStopEvent(BaseBedrockModel):
+    content_block_stop: ContentBlockStopContent
 
-class MessageStopEvent(BaseModel):
-    message_stop: MessageStopContent = Field(alias="messageStop")
+class MessageStopEvent(BaseBedrockModel):
+    message_stop: MessageStopContent
 
-class MetadataEvent(BaseModel):
+class MetadataEvent(BaseBedrockModel):
     metadata: MetaDataContent
 
 
 # --- Error Models (Example) ---
-class InternalServerExceptionContent(BaseModel):
+class InternalServerExceptionContent(BaseBedrockModel):
     message: Optional[str] = None
 
-class InternalServerExceptionEvent(BaseModel):
-    internal_server_exception: InternalServerExceptionContent = Field(alias="internalServerException")
+class InternalServerExceptionEvent(BaseBedrockModel):
+    internal_server_exception: InternalServerExceptionContent
 
-class ModelStreamErrorExceptionContent(BaseModel):
+class ModelStreamErrorExceptionContent(BaseBedrockModel):
     message: Optional[str] = None
-    original_status_code: Optional[int] = Field(default=None, alias="originalStatusCode")
-    original_message: Optional[str] = Field(default=None, alias="originalMessage")
+    original_status_code: Optional[int] = None
+    original_message: Optional[str] = None
 
-class ModelStreamErrorExceptionEvent(BaseModel):
-    model_stream_error_exception: ModelStreamErrorExceptionContent = Field(alias="modelStreamErrorException")
+class ModelStreamErrorExceptionEvent(BaseBedrockModel):
+    model_stream_error_exception: ModelStreamErrorExceptionContent
 
-class ValidationExceptionContent(BaseModel):
+class ValidationExceptionContent(BaseBedrockModel):
     message: Optional[str] = None
 
-class ValidationExceptionEvent(BaseModel):
-    validation_exception: ValidationExceptionContent = Field(alias="validationException")
+class ValidationExceptionEvent(BaseBedrockModel):
+    validation_exception: ValidationExceptionContent
 
 # --- The Main Union Model for a single stream chunk ---
 # This model represents that a chunk will be ONE of these event types.

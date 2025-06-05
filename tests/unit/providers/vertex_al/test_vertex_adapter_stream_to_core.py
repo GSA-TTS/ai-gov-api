@@ -126,3 +126,93 @@ async def test_usage_collections():
     assert results[-1].usage.completion_tokens == 3
     assert results[-1].usage.total_tokens == 5
 
+
+# For function-calling chunks
+
+class MockFunctionCall:
+    def __init__(self, name: str, args: dict | None = None):
+        self.name = name
+        self.args = args or {}
+
+class MockPartWithCall(MockPart):
+    """Inherits text-part stub but carries a Vertex FunctionCall."""
+    def __init__(self, name: str, args: dict | None = None):
+        super().__init__(text=None)
+        self.function_call = MockFunctionCall(name, args)
+
+
+
+@pytest.mark.asyncio
+async def test_single_tool_call_chunk():
+    """Vertex streams one chunk containing a complete function_call."""
+
+    cand = MockCandidate(text=None, finish_reason=FinishReason.STOP)
+    cand.content = MockContent([MockPartWithCall("get_weather", {"city": "Paris"})])
+
+    vertex_stream = make_stream([MockVertexResponse([cand])])
+    results = [
+        r async for r in vertex_stream_response_to_core(
+            vertex_stream, model_id="vertex-ai-001"
+        )
+    ]
+
+    # Expect: role - tool_call delta - finish-reason delta
+    assert len(results) == 3
+
+    role_chunk, call_chunk, finish_chunk = results
+
+    # role chunk
+    assert role_chunk.choices[0].delta.role == "assistant" # type: ignore
+
+    # tool_call delta
+    tc_delta = call_chunk.choices[0].delta.tool_calls # type: ignore
+    assert tc_delta and len(tc_delta) == 1
+    tc = tc_delta[0]
+    assert tc.type == "function"
+    assert tc.function.name == "get_weather"
+    assert tc.function.arguments == '{"city": "Paris"}'
+
+    # finish reason forced to "tool_calls"
+    assert finish_chunk.choices[0].finish_reason == "tool_calls"
+
+
+
+@pytest.mark.asyncio
+async def test_tool_call_multi_chunk_id_and_args_growth():
+    """
+    Vertex streams the same function call in two chunks:
+    - first with empty args, second with full args and the finish reason.
+    We should reuse the same tool_call.id across deltas.
+    """
+
+    chunk1_cand = MockCandidate(text=None, finish_reason=None)
+    chunk1_cand.content = MockContent([MockPartWithCall("get_weather", {})])
+
+    chunk2_cand = MockCandidate(text=None, finish_reason=FinishReason.STOP)
+    chunk2_cand.content = MockContent([MockPartWithCall("get_weather", {"city": "Berlin"})])
+
+    vertex_stream = make_stream([
+        MockVertexResponse([chunk1_cand]),
+        MockVertexResponse([chunk2_cand])
+    ])
+
+    results = [
+        r async for r in vertex_stream_response_to_core(vertex_stream, "vertex-ai-001")
+    ]
+
+    # We should see: role, first tool_call, second tool_call (updated args), finish
+    assert len(results) == 4
+
+    # Grab both tool_call deltas
+    tc1 = results[1].choices[0].delta.tool_calls[0]  # type: ignore
+    tc2 = results[2].choices[0].delta.tool_calls[0] # type: ignore
+
+    # 1️⃣ IDs stay identical across chunks
+    assert tc1.id == tc2.id
+
+    # 2️⃣ First args {}, second args {"city": "Berlin"}
+    assert tc1.function.arguments == "{}"
+    assert tc2.function.arguments == '{"city": "Berlin"}'
+
+    # 3️⃣ Finish-reason forced to "tool_calls"
+    assert results[3].choices[0].finish_reason == "tool_calls"

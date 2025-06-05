@@ -1,30 +1,102 @@
 from datetime import datetime
+import json
 from functools import singledispatch
-from typing import Union, Iterator, AsyncGenerator, Any
+from typing import Union, Iterator, AsyncGenerator, Any, Literal
 import structlog
 
-from ..core.chat_schema import ChatRepsonse, CompletionUsage, Response, StreamResponse, StreamResponseChoice, StreamResponseDelta
+from ..exceptions import (
+    BedrockUnavailable,
+    BedrockValidationError
+)
+from ..core.chat_schema import (
+    ChatRepsonse,
+    CompletionUsage,
+    FunctionCall,
+    Response,
+    StreamResponse,
+    StreamResponseChoice,
+    StreamResponseDelta,
+    ToolCall
+)
 from ..core.embed_schema import EmbeddingResponse, EmbeddingData, EmbeddingUsage
-from .converse_schemas import ConverseResponse, ConverseStreamChunk, MetadataEvent, MessageStartEvent, ContentBlockStartEvent, ContentBlockDeltaEvent, ContentBlockStopEvent, MessageStopEvent
+from .converse_schemas import (
+    ContentTextBlock,
+    ConverseResponse,
+    ConverseStreamChunk,
+    ContentBlockDeltaToolUse,
+    MetadataEvent,
+    MessageStartEvent,
+    ContentBlockStartEvent,
+    ContentBlockDeltaEvent,
+    ContentBlockStopEvent,
+    MessageStopEvent,
+    StartToolUse,
+    ToolUseBlock,
+    InternalServerExceptionEvent,
+    ModelStreamErrorExceptionEvent,
+    ValidationExceptionEvent
+)
 from .cohere_embedding_schemas import CohereRepsonse
 
 log = structlog.get_logger()
 
-def bedrock_chat_response_to_core(resp: ConverseResponse, model:str) -> ChatRepsonse:
-    return ChatRepsonse(
-        model=model,
-        created=datetime.now(),
-        choices=[
-            Response(content=r.text)
-            for r in resp.output['message'].content
-        ],
-        usage=CompletionUsage(
-            prompt_tokens=resp.usage.input_tokens,
-            completion_tokens=resp.usage.output_tokens,
-            total_tokens=resp.usage.total_tokens
+
+def bedrock_tool_use_to_core(tu: ToolUseBlock) -> ToolCall:
+    return ToolCall(
+        id=tu.tool_use.tool_use_id,
+        function=FunctionCall(
+            name=tu.tool_use.name,
+            arguments=json.dumps(tu.tool_use.input),
         )
     )
 
+def map_bedrock_stop_reason(sr: str | None) -> Literal['stop', 'length', 'tool_calls', 'content_filter'] | None:
+    """
+    Convert Bedrock stopReason → Core finish_reason.
+    """
+    print("**finish reason", sr)
+    if sr is None:
+        return None
+    match sr:
+        case "stop_sequence" | "end_turn":
+            return "stop"
+        case "max_tokens":
+            return "length"
+        case "tool_use":
+            return "tool_calls"
+        case _:
+            return "stop"
+
+
+
+def bedrock_chat_response_to_core(resp: ConverseResponse, model: str) -> ChatRepsonse:
+    choice = Response(content="")
+
+    for block in resp.output["message"].content:
+        if isinstance(block, ContentTextBlock):
+            choice.content = (choice.content or "") + block.text
+
+        elif isinstance(block, ToolUseBlock):
+            converted = bedrock_tool_use_to_core(block)
+            choice.tool_calls = (choice.tool_calls or []) + [converted]
+
+        # (Optional) ignore other block types like ToolResultBlock,
+        # because tool replies appear only in *requests*.
+    choice.finish_reason = map_bedrock_stop_reason(resp.stop_reason)
+    # Not sure if this can happen but if Bedrock ever sent neither text nor tool call,
+    # `core_choices` will stay empty; OpenAI expects at least one choice,
+    # so create an empty shell:
+
+    return ChatRepsonse(
+        model=model,
+        created=datetime.now(),
+        choices=[choice],
+        usage=CompletionUsage(
+            prompt_tokens=resp.usage.input_tokens,
+            completion_tokens=resp.usage.output_tokens,
+            total_tokens=resp.usage.total_tokens,
+        ),
+    )
 def bedorock_embed_reposonse_to_core(resp: CohereRepsonse, model:str, token_count) -> EmbeddingResponse:
     return EmbeddingResponse(
         model=model,
@@ -57,17 +129,45 @@ def _(part: MessageStartEvent) -> Iterator[RespPiece]:
 
 @_event_to_oai.register
 def _(part: ContentBlockStartEvent) -> Iterator[RespPiece]:
-    # This can also be a tool call
+    start = part.content_block_start.start
+    if isinstance(start, StartToolUse):
+        details =start.tool_use
+        yield StreamResponseChoice(
+            index=0,
+            delta=StreamResponseDelta(
+                tool_calls=[ToolCall(
+                    id=details.tool_use_id,
+                    function=FunctionCall(
+                        name=details.name,
+                        arguments=""   # start empty
+                    )
+                )]
+            )
+        )
     return _noop()
 
 @_event_to_oai.register
 def _(part: ContentBlockDeltaEvent) -> Iterator[RespPiece]:
-    yield StreamResponseChoice(
-        index=0,
-        delta=StreamResponseDelta(
-            content=part.content_block_delta.delta.text
+    if isinstance(part.content_block_delta.delta, ContentBlockDeltaToolUse):
+        yield StreamResponseChoice(
+            index=0,
+            delta=StreamResponseDelta(
+                tool_calls=[ToolCall(
+                    id="unknown",   # Bedrock omits id in delta; 
+                    function=FunctionCall(
+                        name="",     # name is optional in deltas
+                        arguments=part.content_block_delta.delta.tool_use.input
+                    )
+                )]
+            )
         )
-    )
+    elif isinstance(part.content_block_delta.delta, ContentTextBlock):
+        yield StreamResponseChoice(
+            index=0,
+            delta=StreamResponseDelta(
+                content=part.content_block_delta.delta.text
+            )
+        )
 
 @_event_to_oai.register
 def _(part: ContentBlockStopEvent) -> Iterator[RespPiece]:
@@ -88,6 +188,23 @@ def _(part: MetadataEvent) -> Iterator[RespPiece]:
             completion_tokens=part.metadata.usage.output_tokens,
             total_tokens=part.metadata.usage.total_tokens,
     )
+
+## stream exception events
+@_event_to_oai.register
+def _(ev: InternalServerExceptionEvent) -> Iterator[RespPiece]:
+    raise BedrockUnavailable(ev.internal_server_exception.message or
+                             "Internal error from Bedrock")
+
+@_event_to_oai.register
+def _(ev: ModelStreamErrorExceptionEvent) -> Iterator[RespPiece]:
+    raise BedrockUnavailable(ev.model_stream_error_exception.message or
+                             "Stream error from model")
+
+@_event_to_oai.register
+def _(ev: ValidationExceptionEvent) -> Iterator[RespPiece]:
+    raise BedrockValidationError(ev.validation_exception.message or
+                                 "Validation error in streaming request")
+
 
 async def bedrock_chat_stream_response_to_core(bedrockStream, model:str, id:str) -> AsyncGenerator[StreamResponse, Any]: 
     usage = None

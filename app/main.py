@@ -9,6 +9,7 @@ from app.logs.logging_config import setup_structlog
 from app.logs.middleware import StructlogMiddleware
 from app.logs.logging_context import request_id_ctx
 from app.routers import api_v1, root, users, tokens
+from app.providers.exceptions import ModelError
 from pydantic import ValidationError
 from app.common.exceptions import ResourceNotFoundError, DuplicateResourceError
 from app.db.session import engine
@@ -54,6 +55,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(ModelError)
+async def model_error_handler(request: Request, exc: ModelError):
+    return JSONResponse(
+        status_code=getattr(exc, "status_code", 500),
+        content={"detail": str(exc)},
+    )
 
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request: Request, exc: ValidationError):

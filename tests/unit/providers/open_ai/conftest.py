@@ -14,7 +14,14 @@ from app.providers.open_ai.schemas import (
     ImageContentPart,
     ImageUrl, 
     FileContentPart,
-    FileContent
+    FileContent,
+    FunctionParameters,
+    FunctionObject,
+    FunctionCall,
+    ToolDefinition,
+    ToolCall,
+    ToolMessage
+
 )
 
 @pytest.fixture
@@ -28,22 +35,52 @@ def openai_chat_request():
     )
 
 @pytest.fixture
-def openai_full_chat_request():
+def openai_full_chat_request() -> ChatCompletionRequest:
+    weather_params = FunctionParameters(
+        properties={
+            "location": {"type": "string", "description": "City name"}
+        },
+        required=["location"]
+    )
+    weather_def = ToolDefinition(
+        function=FunctionObject(
+            name="get_weather",
+            description="Get the current weather in a city",
+            parameters=weather_params,
+        )
+    )
+
     return ChatCompletionRequest(
         model="test-model",
-        messages = [
-            SystemMessage(content=[TextContentPart(text="Speak Pirate!")]),
-            UserMessage(content=[TextContentPart(text="Hello!")]),
-            AssistantMessage(content=[TextContentPart(text="Hello! How can I assist you?")])
-        ],
         temperature=1.0,
         top_p=.5,
         max_tokens=1000,
         stream=True,
-        stop=["stop", "STOP"]
-
+        stop=["stop", "STOP"],
+        tools=[weather_def],                 # NEW  ←───────────────
+        tool_choice="auto",                  # optional
+        messages=[
+            # NB: use *OpenAI* message types here
+            SystemMessage(content=[TextContentPart(text="Speak Pirate!")]),
+            UserMessage(content=[TextContentPart(text="Hello!")]),
+            AssistantMessage(
+                content=None,                # spec says null when only tool calls
+                tool_calls=[
+                    ToolCall(
+                        id="call_1",
+                        function=FunctionCall(
+                            name="get_weather",
+                            arguments='{"location":"Boston"}'
+                        )
+                    )
+                ],
+            ),
+            ToolMessage(
+                tool_call_id="call_1",
+                content=[TextContentPart(text="Arrr! ’Tis 55 degrees and clear in Boston.")]
+            ),
+        ],
     )
-
 @pytest.fixture
 def openai_chat_reponse():
     return ChatCompletionResponse(
