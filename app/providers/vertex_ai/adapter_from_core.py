@@ -118,7 +118,7 @@ def handle_tool_messages(
 def handle_tool_definition(tools: Sequence[ToolDefinition] | None) -> List[Tool] | None:
     if not tools:
         return 
-    vertex_tools = []
+    function_declarations = []
     for tool_def in tools:
         params_dict = {
             "type": tool_def.function.parameters.type,
@@ -132,8 +132,9 @@ def handle_tool_definition(tools: Sequence[ToolDefinition] | None) -> List[Tool]
             description=tool_def.function.description or "",
             parameters=params_dict
         )
-        vertex_tools.append(Tool(function_declarations=[func_decl]))
-    return vertex_tools
+        function_declarations.append(func_decl)
+        
+    return [Tool(function_declarations=function_declarations)]
 
 def convert_mode(tool_choice: str | dict) -> tuple[Optional[ToolConfig.FunctionCallingConfig.Mode],Optional[List[str]]]:
     mode: Optional[ToolConfig.FunctionCallingConfig.Mode] = None
@@ -242,13 +243,15 @@ def convert_chat_request(req: ChatRequest) -> VertexGenerateRequest:
     
     vertex_generation_config = GenerationConfig(**gen_config_params) if gen_config_params else None
 
-    return VertexGenerateRequest(
+    VG =  VertexGenerateRequest(
         contents=vertex_contents,
         stream=req.stream,
         generation_config=vertex_generation_config,
         tools=vertex_tools,
         tool_config=vertex_tool_config,
     )
+    print(VG)
+    return VG
 
 def convert_embedding_request(req: CoreEmbedRequest) -> EmbeddingRequest:
 
