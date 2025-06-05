@@ -42,7 +42,6 @@ async def converse(
     backend=Depends(chat_backend)
 ) -> Any:
     core_req = openai_chat_request_to_core(req)
-
     if req.stream:
         content_generator = backend.stream_events(core_req)
         return StreamingResponse(

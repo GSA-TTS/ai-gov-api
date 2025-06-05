@@ -43,6 +43,7 @@ log = structlog.get_logger()
 
 def bedrock_tool_use_to_core(tu: ToolUseBlock) -> ToolCall:
     return ToolCall(
+        index=None,
         id=tu.tool_use.tool_use_id,
         function=FunctionCall(
             name=tu.tool_use.name,
@@ -54,7 +55,6 @@ def map_bedrock_stop_reason(sr: str | None) -> Literal['stop', 'length', 'tool_c
     """
     Convert Bedrock stopReason → Core finish_reason.
     """
-    print("**finish reason", sr)
     if sr is None:
         return None
     match sr:
@@ -136,6 +136,7 @@ def _(part: ContentBlockStartEvent) -> Iterator[RespPiece]:
             index=0,
             delta=StreamResponseDelta(
                 tool_calls=[ToolCall(
+                    index=0,
                     id=details.tool_use_id,
                     function=FunctionCall(
                         name=details.name,
@@ -153,9 +154,9 @@ def _(part: ContentBlockDeltaEvent) -> Iterator[RespPiece]:
             index=0,
             delta=StreamResponseDelta(
                 tool_calls=[ToolCall(
-                    id="unknown",   # Bedrock omits id in delta; 
+                    index=0,  
+                    # omit id in subsequent calls  
                     function=FunctionCall(
-                        name="",     # name is optional in deltas
                         arguments=part.content_block_delta.delta.tool_use.input
                     )
                 )]
@@ -178,7 +179,7 @@ def _(part: MessageStopEvent) -> Iterator[RespPiece]:
     yield StreamResponseChoice(
         index=0,
         delta=StreamResponseDelta(),
-        finish_reason=part.message_stop.stop_reason
+        finish_reason=map_bedrock_stop_reason(part.message_stop.stop_reason)
     )
 
 @_event_to_oai.register

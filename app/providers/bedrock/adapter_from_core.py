@@ -105,11 +105,16 @@ def _(part: FilePart) -> br.ContentDocumentBlock:
 
 @_part_to_br.register
 def _(tc: ToolCall) -> br.ToolUseBlock:
+    args = {}
+    try:
+        args = json.loads(tc.function.arguments)
+    except json.JSONDecodeError:
+        pass
     return br.ToolUseBlock(
         tool_use=br.ToolUseBlockContent(
             tool_use_id=tc.id,
             name=tc.function.name,
-            input=json.loads(tc.function.arguments),
+            input=args,
         )
     )
 
@@ -123,6 +128,7 @@ def _(tm: ToolMessage) -> br.ToolResultBlock:
             content_blocks.append(br.ContentTextBlock(text=part.text))
         else: # raw string / JSON
             content_blocks.append(br.ContentJSONBlock(json=part))  
+
     return br.ToolResultBlock(
         tool_result=br.ToolResultBlockContent(
             tool_use_id=tm.tool_call_id,

@@ -53,7 +53,6 @@ def test_model_tool_response():
                 "index": 0,
                 "message": {
                     "role": "assistant",
-                    "content": None,
                     "tool_calls": [
                         {
                             "id": "call_abc123",
@@ -76,5 +75,5 @@ def test_model_tool_response():
     }
 
     model = ChatCompletionResponse.model_validate(output)
-    result = model.model_dump(by_alias=True)
+    result = model.model_dump(by_alias=True, exclude_none=True)
     assert result == output

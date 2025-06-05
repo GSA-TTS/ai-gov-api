@@ -1,7 +1,8 @@
 import json
 from functools import singledispatch
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Sequence, cast
 import structlog
+from itertools import groupby
 
 from vertexai.language_models import TextEmbeddingInput
 from vertexai.generative_models import (
@@ -20,6 +21,7 @@ from ..core.chat_schema import (
     AssistantMessage,
     ImagePart,
     FilePart,
+    ToolDefinition,
     ToolMessage,
 )
 from ..core.embed_schema import EmbeddingRequest as CoreEmbedRequest
@@ -44,162 +46,199 @@ def _(part: ImagePart) -> Part:
 def _(part: FilePart) -> Part:
     return Part.from_data(data=part.bytes_, mime_type="application/pdf")
     
+def handle_assistant_messages(
+        messages_in_group:List[AssistantMessage], 
+        tool_id_to_func_name_map: Dict[str, str]
+    ) -> List[Content]:
+    '''
+    Handles converting assistant responses. These may contain 0 or more tool calls.
+    '''
+    vertex_contents: List[Content] = []
+    for core_msg in messages_in_group:
+        assistant_parts: List[Part] = []
+        if core_msg.content: # Text/image content
+            for part_data in core_msg.content:
+                assistant_parts.append(_part_to_vtx(part_data))
+        
+        if core_msg.tool_calls:
+            # Core ToolCall -> Vertex FunctionCall
+            for tool_call in core_msg.tool_calls:
+                if tool_call.function.name and tool_call.id:
+                    tool_id_to_func_name_map[tool_call.id] = tool_call.function.name
+                try:
+                    args_dict = json.loads(tool_call.function.arguments or '{}') 
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Malformed JSON for tool {tool_call.id} ({tool_call.function.name}): {e}. Using empty args.")
+                    args_dict = {}
+                
+                fc = FunctionCall(
+                    name=tool_call.function.name or "unknown", 
+                    args=args_dict
+                )
+                assistant_parts.append(Part.from_dict({'function_call': fc.to_dict()}))
+        if assistant_parts:
+            vertex_contents.append(Content(role="model", parts=assistant_parts))
+    return vertex_contents   
+
+def handle_tool_messages(
+        messages_in_group:List[ToolMessage],
+        tool_id_to_func_name_map: Dict[str, str]
+    ) -> Content | None:
+    '''
+    Handles tool messages (result of calling tools)
+    Unlile OpenAI, Vertex needs these grouped together 
+    in a single content object if there are more than one.
+    '''
+    tool_response_collection_parts: List[Part] = []
+    vertex_content: Content | None = None
+
+    for core_msg in messages_in_group:
+        function_name = tool_id_to_func_name_map.get(core_msg.tool_call_id)
+        if not function_name:
+            logger.error(f"ToolMessage {core_msg.tool_call_id} has no matching call ID mapped. Skipping.")
+            continue # raise exception?
+
+        tool_response_content_str = ""
+        if isinstance(core_msg.content, str):
+            tool_response_content_str = core_msg.content
+        elif core_msg.content: # Assuming Sequence[TextPart]
+            tool_response_content_str = "".join(
+                tp.text for tp in core_msg.content if isinstance(tp, TextPart)
+            )
+        
+        tool_response_collection_parts.append(Part.from_function_response(
+            name=function_name,
+            response={"content": tool_response_content_str} 
+        ))
+
+    if tool_response_collection_parts:
+        vertex_content = Content(role="function", parts=tool_response_collection_parts)
+    return vertex_content
+
+def handle_tool_definition(tools: Sequence[ToolDefinition] | None) -> List[Tool] | None:
+    if not tools:
+        return 
+    vertex_tools = []
+    for tool_def in tools:
+        params_dict = {
+            "type": tool_def.function.parameters.type,
+            "properties": tool_def.function.parameters.properties,
+        }
+        if tool_def.function.parameters.required is not None:
+            params_dict["required"] = tool_def.function.parameters.required
+        
+        func_decl = FunctionDeclaration(
+            name=tool_def.function.name,
+            description=tool_def.function.description or "",
+            parameters=params_dict
+        )
+        vertex_tools.append(Tool(function_declarations=[func_decl]))
+    return vertex_tools
+
+def convert_mode(tool_choice: str | dict) -> tuple[Optional[ToolConfig.FunctionCallingConfig.Mode],Optional[List[str]]]:
+    mode: Optional[ToolConfig.FunctionCallingConfig.Mode] = None
+    allowed_function_names: Optional[List[str]] = None
+
+    if isinstance(tool_choice, str):
+        match tool_choice:
+            case "none":
+                mode = ToolConfig.FunctionCallingConfig.Mode.NONE
+            case "auto": 
+                mode = ToolConfig.FunctionCallingConfig.Mode.AUTO
+            case "required":
+                mode = ToolConfig.FunctionCallingConfig.Mode.ANY
+            case _: # Choice is a specific function name
+                mode = ToolConfig.FunctionCallingConfig.Mode.ANY
+                allowed_function_names = [tool_choice]
+    
+    elif isinstance(tool_choice, dict):
+        if tool_choice.get("type") == "function":
+            # Force a specific function call. It's not clear in OpenAI docs but shown in examples:
+            # https://platform.openai.com/docs/guides/function-calling/function-calling-behavior?api-mode=chat#additional-configurations
+            func_spec = tool_choice.get("function")
+            if func_spec and isinstance(func_spec, dict) and "name" in func_spec:
+                mode = ToolConfig.FunctionCallingConfig.Mode.ANY
+                allowed_function_names = [func_spec["name"]]
+            else:
+                raise ValueError(f"Invalid tool_choice dict: {tool_choice}")
+        else:
+            raise ValueError(f"Unsupported tool_choice type in dict: {tool_choice.get('type')}")
+    return mode, allowed_function_names
 
 def convert_chat_request(req: ChatRequest) -> VertexGenerateRequest:
     vertex_contents: List[Content] = []
-    tool_id_to_func_name_map: Dict[str, str] = {}
+    # function names -> call IDs for resolving in ToolMessages
+    tool_id_to_func_name_map: Dict[str, str] = {} 
 
-    for core_msg in req.messages:
-        current_parts: List[Part] = []
-        current_role: Optional[str] = None
-
-        if isinstance(core_msg, SystemMessage):
-            # vertex doesn't have system messages they recommend using user/assistant pairs
-            system_message = '\n'.join(content.text for content in core_msg.content)
-            vertex_contents.append(Content(role="user", parts=[Part.from_text(system_message)]))
-            vertex_contents.append(Content(role="model", parts=[Part.from_text("Okay, I will follow these instructions.")]))
-            continue
-
-        elif isinstance(core_msg, UserMessage):
-            current_role = "user"
-            for part_data in core_msg.content:
-                current_parts.append(_part_to_vtx(part_data))
-                
-        elif isinstance(core_msg, AssistantMessage):
-            current_role = "model"
-            # Handle textual/image content from assistant
-            if core_msg.content:
-                for part_data in core_msg.content:
-                    current_parts.append(_part_to_vtx(part_data))
-
-            # Handle tool calls made by the assistant
-            if core_msg.tool_calls:
-                for tool_call in core_msg.tool_calls:
-                    if tool_call.type == "function":
-                        # Store mapping for potential ToolMessage follow-up
-                        tool_id_to_func_name_map[tool_call.id] = tool_call.function.name
-                        try:
-                            args_dict = json.loads(tool_call.function.arguments)
-                        except json.JSONDecodeError as e:
-                            # Handle malformed JSON arguments; here, we log and use empty dict
-                            logger.warning(f"Warning: Could not parse JSON arguments for tool call {tool_call.id} "
-                                  f"(function: {tool_call.function.name}). Error: {e}. Using empty arguments.")
-                            args_dict = {}
-                        
-                        # Create Part with FunctionCall —
-                        # For somereason Part.from_function_call is not in the SDK
-                        # and Part(function_call=function_call) does not work
-                        # so this is kind of a hack
-                        function_call = FunctionCall(
-                            name=tool_call.function.name,
-                            args=args_dict
-                        )                      
-                        current_parts.append( Part.from_dict({'function_call': function_call.to_dict()}))
-                            
+    # Group messages by their type to handle consecutive ToolMessages correctly
+    # OpenAI has ToolMessages as individual messages. Vertex expects them to be grouped
+    # So groupby type which should allow us to iterate over consective ToolMessages
+    for msg_type, group in groupby(req.messages, key=type):
         
-        elif isinstance(core_msg, ToolMessage):
-            # This is a response from a tool execution
-            # Vertex API uses role "function" for content containing function responses
-            current_role = "function"
-            function_name = tool_id_to_func_name_map.get(core_msg.tool_call_id)
-            
-            if not function_name:
-                raise ValueError(
-                    f"ToolMessage with tool_call_id '{core_msg.tool_call_id}' references an unknown "
-                    f"or out-of-order tool call. Ensure AssistantMessage with the call precedes this."
-                )
+        messages_in_group = list(group) 
 
-            tool_response_content_str = ""
-            if isinstance(core_msg.content, str):
-                tool_response_content_str = core_msg.content
-            elif core_msg.content:  # Sequence[TextPart]
-                tool_response_content_str = "".join(
-                    tp.text for tp in core_msg.content if isinstance(tp, TextPart)
+        if msg_type is SystemMessage:
+            for core_msg in messages_in_group: 
+                system_message_text = '\n'.join(
+                    content.text for content in core_msg.content if isinstance(content, TextPart)
                 )
-            
-            # Use Part.from_function_response() method
-            current_parts.append(Part.from_function_response(
-                name=function_name,
-                response={"content": tool_response_content_str}
-            ))
+                vertex_contents.append(Content(role="user", parts=[Part.from_text(system_message_text)]))
+                vertex_contents.append(Content(role="model", parts=[Part.from_text("Okay, I will follow these instructions.")]))
         
-        # Add the constructed Content object if it has a role and parts
-        if current_role and current_parts:
-            vertex_contents.append(Content(role=current_role, parts=current_parts))
-        elif current_role and not current_parts:
-            logger.warning(f"Warning: Message of role '{current_role}' resulted in no parts and was skipped.")
+        elif msg_type is UserMessage:
+            for core_msg in messages_in_group: 
+                if isinstance(core_msg, UserMessage):
+                    user_parts: List[Part] = [_part_to_vtx(part_data) for part_data in core_msg.content]
+                    if user_parts:
+                        vertex_contents.append(Content(role="user", parts=user_parts))
+        
+        elif msg_type is AssistantMessage:
+            messages_in_group = cast(List[AssistantMessage], messages_in_group)
+            contents = handle_assistant_messages(messages_in_group, tool_id_to_func_name_map)
+            vertex_contents.extend(contents)                    
+       
+        elif msg_type is ToolMessage:
+            messages_in_group = cast(List[ToolMessage], messages_in_group)
+            content = handle_tool_messages(messages_in_group, tool_id_to_func_name_map)
+            if content is not None:
+                vertex_contents.append(content)                    
 
-    # Convert `req.tools` (ToolDefinition) to Vertex `Tool` objects
-    vertex_tools: Optional[List[Tool]] = None
-    if req.tools:
-        vertex_tools = []
-        for tool_def in req.tools:
-            if tool_def.type == "function":
-                # Updated: Create parameters dict directly without Schema.from_dict
-                params_dict = {
-                    "type": tool_def.function.parameters.type,  # Should be "object"
-                    "properties": tool_def.function.parameters.properties,
-                }
-                if tool_def.function.parameters.required is not None:
-                    params_dict["required"] = tool_def.function.parameters.required
-                
-                func_decl = FunctionDeclaration(
-                    name=tool_def.function.name,
-                    description=tool_def.function.description or "",
-                    parameters=params_dict  # Pass dict directly
-                )
-                vertex_tools.append(Tool(function_declarations=[func_decl]))
+        else: # Should not happen if ChatMessage is a well-defined Union/base
+            logger.warning(f"Unhandled message type in groupby: {msg_type}")
 
-    # Convert `req.tool_choice` to Vertex `ToolConfig`
+    #  Tool Definitions and Config 
+    vertex_tools: Optional[List[Tool]] = handle_tool_definition(req.tools)
+
     vertex_tool_config: Optional[ToolConfig] = None
     if req.tool_choice:
-        mode: Optional[ToolConfig.FunctionCallingConfig.Mode] = None
-        allowed_function_names: Optional[List[str]] = None
-
-        if isinstance(req.tool_choice, str):
-            if req.tool_choice == "none":
-                mode = ToolConfig.FunctionCallingConfig.Mode.NONE
-            elif req.tool_choice == "auto":
-                mode = ToolConfig.FunctionCallingConfig.Mode.AUTO
-            elif req.tool_choice == "required": 
-                if not vertex_tools:  # "required" needs tools to choose from
-                    raise ValueError("'tool_choice': 'required' was specified, but no tools were provided.")
-                mode = ToolConfig.FunctionCallingConfig.Mode.ANY  # Force a call from any available tool
-            else:  # Assumed to be a specific function name
-                mode = ToolConfig.FunctionCallingConfig.Mode.ANY  # Force this specific function
-                allowed_function_names = [req.tool_choice]
-        
-        elif isinstance(req.tool_choice, dict):  # e.g., {"type": "function", "function": {"name": "my_func"}}
-            if req.tool_choice.get("type") == "function":
-                func_spec = req.tool_choice.get("function")
-                if func_spec and isinstance(func_spec, dict) and "name" in func_spec:
-                    mode = ToolConfig.FunctionCallingConfig.Mode.ANY  # Force this specific function
-                    allowed_function_names = [func_spec["name"]]
-                else:
-                    raise ValueError(f"Invalid tool_choice dictionary format: {req.tool_choice}")
-            else:
-                raise ValueError(f"Unsupported tool_choice type in dictionary: {req.tool_choice.get('type')}")
+        mode, allowed_function_names = convert_mode(req.tool_choice)
+        if mode == ToolConfig.FunctionCallingConfig.Mode.ANY and not vertex_tools:
+            raise ValueError("tool_choice 'required' but no tools provided.")
         
         if mode is not None:
-            fcc_kwargs: Dict[str, Any] = {"mode": mode}
+            function_config_args: Dict[str, Any] = {"mode": mode}
             if allowed_function_names:
-                fcc_kwargs["allowed_function_names"] = allowed_function_names
-            vertex_tool_config = ToolConfig(function_calling_config=ToolConfig.FunctionCallingConfig(**fcc_kwargs))
+                function_config_args["allowed_function_names"] = allowed_function_names
+            vertex_tool_config = ToolConfig(
+                function_calling_config=ToolConfig.FunctionCallingConfig(**function_config_args)
+            )
 
-    elif vertex_tools:  # Tools are provided, but no specific tool_choice => default to AUTO
+    elif vertex_tools:
         vertex_tool_config = ToolConfig(
-            function_calling_config=ToolConfig.FunctionCallingConfig(mode=ToolConfig.FunctionCallingConfig.Mode.AUTO)
+            function_calling_config=ToolConfig.FunctionCallingConfig(
+                mode=ToolConfig.FunctionCallingConfig.Mode.AUTO
+                )
         )
-
+    
     gen_config_params = {}
-    if req.temperature is not None:
+    if req.temperature is not None: 
         gen_config_params["temperature"] = req.temperature
-    if req.max_tokens is not None:
+    if req.max_tokens is not None: 
         gen_config_params["max_output_tokens"] = req.max_tokens
-    if req.top_p is not None:
+    if req.top_p is not None: 
         gen_config_params["top_p"] = req.top_p
-    if req.stop:  # If req.stop is an empty list, it might be passed as is.
-        gen_config_params["stop_sequences"] = req.stop
+    if req.stop:
+        gen_config_params["stop_sequences"] = req.stop 
     
     vertex_generation_config = GenerationConfig(**gen_config_params) if gen_config_params else None
 

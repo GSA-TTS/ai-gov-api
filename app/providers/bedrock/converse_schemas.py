@@ -67,8 +67,8 @@ class ContentJSONBlock(BaseBedrockModel):
 
 # For tool use request from the model
 class ToolUseBlockContent(BaseBedrockModel):
-    tool_use_id: str
-    name: str
+    tool_use_id: Optional[str] = None # these are technically required except 
+    name: Optional[str] = None        # but for streams this can be empty from OpenAI
     input: Dict[str, Any]
 
 class ToolUseBlock(BaseBedrockModel):

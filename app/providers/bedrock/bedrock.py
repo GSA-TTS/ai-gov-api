@@ -14,7 +14,6 @@ It has three part:
 
 '''
 
-
 import structlog
 from typing import  Literal, AsyncGenerator
 from uuid import uuid4
@@ -226,8 +225,10 @@ class BedRockBackend(Backend):
                         log.info("model metrics", model=chunk.model, **usage.model_dump())
                     yield chunk
         except botocore.exceptions.ClientError as e:
+            log.error(e)
             raise _map_bedrock_error(e) from e
         except botocore.exceptions.ParamValidationError as e:
+            log.error(e)
             raise BedrockValidationError(str(e), original_exception=e) from e
-
-        
+        except Exception as e:
+            log.error(e)

@@ -44,10 +44,11 @@ def convert_chat_vertex_response(resp: vtx.GenerationResponse, model:str) -> Cha
             core_tool_calls_list: Optional[List[ToolCall]] = None
             if vertex_function_calls:
                 core_tool_calls_list = []
-                for fc_from_vertex in vertex_function_calls:
+                for idx, fc_from_vertex in enumerate(vertex_function_calls):
                     tool_call_id = f"call_{uuid4().hex[:10]}"
                     core_tool_calls_list.append(
                         ToolCall(
+                            index=idx,
                             id=tool_call_id,
                             type="function",
                             function=FunctionCall(
@@ -170,13 +171,15 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
 
             # ───── function-call parts ─────
             if has_fcall:
-                for p in parts:
+                for idx, p in enumerate(parts):
+                    print("**Part**")
+                    print(idx, p)
                     fcall = getattr(p, "function_call", None)
                     if not fcall:
                         continue
 
                     # build / update the in-progress state for incremental args
-                    state = in_progress_args.get(cand_idx)
+                    state = in_progress_args.get(idx)
                     if state is None:
                         state = {
                             "id": f"call_{uuid4().hex[:10]}",
@@ -189,6 +192,7 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
                         state["args"] = json.dumps(fcall.args or {})
 
                     tool_call_delta = ToolCall(
+                        index = idx,
                         id=state["id"],
                         type="function",
                         function=FunctionCall(
@@ -196,7 +200,8 @@ async def vertex_stream_response_to_core(vertex_stream, model_id) ->  AsyncGener
                             arguments=state["args"],
                         ),
                     )
-
+                    print("Tool call: *** ")
+                    print(tool_call_delta)
                     yield StreamResponse(
                         id=stream_id,
                         created=created_timestamp,
