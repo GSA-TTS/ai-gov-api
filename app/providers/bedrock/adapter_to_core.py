@@ -129,6 +129,7 @@ def _(part: MessageStartEvent) -> Iterator[RespPiece]:
 
 @_event_to_oai.register
 def _(part: ContentBlockStartEvent) -> Iterator[RespPiece]:
+    openai_tool_call_idx = part.content_block_start.content_block_index
     start = part.content_block_start.start
     if isinstance(start, StartToolUse):
         details =start.tool_use
@@ -136,7 +137,7 @@ def _(part: ContentBlockStartEvent) -> Iterator[RespPiece]:
             index=0,
             delta=StreamResponseDelta(
                 tool_calls=[ToolCall(
-                    index=0,
+                    index=openai_tool_call_idx,
                     id=details.tool_use_id,
                     function=FunctionCall(
                         name=details.name,
@@ -149,12 +150,14 @@ def _(part: ContentBlockStartEvent) -> Iterator[RespPiece]:
 
 @_event_to_oai.register
 def _(part: ContentBlockDeltaEvent) -> Iterator[RespPiece]:
+    openai_tool_call_idx = part.content_block_delta.content_block_index
+
     if isinstance(part.content_block_delta.delta, ContentBlockDeltaToolUse):
         yield StreamResponseChoice(
             index=0,
             delta=StreamResponseDelta(
                 tool_calls=[ToolCall(
-                    index=0,  
+                    index=openai_tool_call_idx,  
                     # omit id in subsequent calls  
                     function=FunctionCall(
                         arguments=part.content_block_delta.delta.tool_use.input

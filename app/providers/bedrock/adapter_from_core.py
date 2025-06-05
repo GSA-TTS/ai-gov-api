@@ -1,6 +1,7 @@
 import json
+from itertools import groupby
 from functools import singledispatch
-from typing import List, Tuple, Sequence, Optional, Literal, Union, Dict
+from typing import List, Tuple, Sequence, Optional, Literal, Union, Dict, cast
 
 from ..core.chat_schema import (
     ChatRequest,
@@ -167,16 +168,39 @@ def core_to_bedrock(req: ChatRequest) -> br.ConverseRequest:
         )
     
     br_messages: list[br.Message] = []
-    for m in messages:
-        role = convert_core_role(m.role)
-        if m.role == "assistant" and m.tool_calls:
-            # assistant asking to run a tool
-            blocks = [_part_to_br(tc) for tc in m.tool_calls]
-        elif m.role == "tool":
-            blocks = [_part_to_br(m)] 
-        else:
-            blocks = [_part_to_br(p) for p in m.content]
-        br_messages.append(br.Message(role=role, content=blocks))
+
+    for message_type, group in groupby(messages, type):
+        messages_in_group = list(group)
+
+        if message_type == UserMessage:
+            for core_msg in messages_in_group:
+                content_blocks = [_part_to_br(p) for p in core_msg.content]
+                if content_blocks:
+                        br_messages.append(br.Message(role="user", content=content_blocks))
+
+        elif message_type == AssistantMessage:
+            for core_msg in messages_in_group:
+                core_msg = cast(AssistantMessage, core_msg, )
+                assistant_content_blocks: List[br.ContentBlock] = []
+                if core_msg.content: # Handle text/image from assistant
+                    for part_data in core_msg.content:
+                        assistant_content_blocks.append(_part_to_br(part_data))
+                
+                if core_msg.tool_calls: # Assistant asking to run a tool
+                    for tc in core_msg.tool_calls:
+                        assistant_content_blocks.append(_part_to_br(tc)) 
+                
+                if assistant_content_blocks:
+                    br_messages.append(br.Message(role="assistant", content=assistant_content_blocks))
+        
+        elif message_type == ToolMessage:
+            all_tool_result_blocks: List[br.ContentBlock] = [] # Collect all ToolResultBlocks
+            for core_msg in messages_in_group:
+                all_tool_result_blocks.append(_part_to_br(core_msg)) 
+            
+            if all_tool_result_blocks:
+                # Bedrock expects tool results in a 'user' role message.
+                br_messages.append(br.Message(role="user", content=all_tool_result_blocks))
 
     return br.ConverseRequest(
         model_id=req.model,
