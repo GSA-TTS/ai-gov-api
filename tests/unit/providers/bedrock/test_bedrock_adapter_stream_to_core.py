@@ -94,7 +94,7 @@ async def test_message_stop_event_conversion():
     converted = chunks[0]
     assert isinstance(converted, core.StreamResponse)
     assert converted.choices[0].delta is not None
-    assert converted.choices[0].finish_reason == "end_message"
+    assert converted.choices[0].finish_reason == "stop"
 
 
 @pytest.mark.asyncio

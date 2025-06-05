@@ -9,9 +9,11 @@ from google.api_core import exceptions as core_exceptions
 from vertexai.generative_models import GenerativeModel
 from vertexai.language_models import TextEmbeddingModel, TextEmbedding
 
+
 from app.providers.exceptions import InvalidInput
 from app.providers.base import Backend, LLMModel
 from ..core.embed_schema import EmbeddingRequest
+from ..exceptions import VertexValidationError
 from ..core.chat_schema import ChatRequest, ChatRepsonse, StreamResponse
 from .adapter_from_core import convert_chat_request, convert_embedding_request
 from .adapter_to_core import convert_chat_vertex_response, vertex_embed_reposonse_to_core, vertex_stream_response_to_core
@@ -78,9 +80,8 @@ class VertexBackend(Backend):
             end_time = time.perf_counter_ns()
             latency_ms = round((end_time - start_time) / 1_000_000)
             log.info("model metrics", model=model_id, latencyMS=latency_ms)
-        except core_exceptions.InvalidArgument as e:
-            raise InvalidInput(str(e), original_exception=e)
-        
+        except core_exceptions.ClientError as e:
+            raise VertexValidationError(str(e), original_exception=e)
 
 
         return convert_chat_vertex_response(response, model=model_id)
@@ -110,12 +111,11 @@ class VertexBackend(Backend):
         vertex_req = convert_chat_request(payload)
 
         try:
-            vertex_stream= await model.generate_content_async(**dict(vertex_req))
+            vertex_stream = await model.generate_content_async(**dict(vertex_req))
             async for vertex_response in vertex_stream_response_to_core(vertex_stream, model_id=model_id):
                 if vertex_response.usage is not None:
                     log.info("model metrics", model=model_id, **vertex_response.usage.model_dump())
                 yield vertex_response
-
         except Exception as e:
             log.exception(e)
 

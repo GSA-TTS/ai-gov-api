@@ -43,13 +43,14 @@ class FilePart(BaseModel):
 ContentPart = Annotated[TextPart | ImagePart | FilePart, Field(discriminator="type")]
 
 class FunctionCall(BaseModel):
-    name: str
+    name: Optional[str] = None
     arguments: str # raw JSON string
 
 
 class ToolCall(BaseModel):
     """Represents a tool call from the assistant."""
-    id: str = Field(..., description="Unique identifier for the tool call")
+    index: Optional[int] = Field(None, description="Tool call index useed in streaming")
+    id: Optional[str] = Field(default=None, description="Unique identifier for the tool call")
     type: Literal["function"] = "function"
     function: FunctionCall = Field(
         ..., description="Function call details, including 'name' and 'arguments'"

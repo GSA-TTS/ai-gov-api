@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<!-- LLM stream + tool‑use tester (final, June 2025 - Rev 1) -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LLM Stream & Tool‑Use Tester</title>
+<style>
+ body{font-family:sans-serif;margin:20px;background:#f4f4f4;color:#333}
+ .container{background:#fff;padding:20px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,.1)}
+ label{display:block;margin-bottom:5px;font-weight:700}
+ input[type=text],input[type=password],textarea{width:calc(100% - 22px);padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:4px;box-sizing:border-box}
+ textarea{min-height:100px;resize:vertical}
+ button{background:#007bff;color:#fff;padding:10px 15px;border:0;border-radius:4px;cursor:pointer;font-size:16px}
+ button:hover{background:#0056b3}
+ button:disabled{background:#aaa;cursor:not-allowed}
+ #responseArea{margin-top:20px;padding:15px;border:1px solid #eee;background:#f9f9f9;min-height:100px;white-space:pre-wrap;word-wrap:break-word;border-radius:4px}
+ .status{margin-top:10px;font-style:italic;color:#666}
+ textarea#functionsJson{min-height:160px}
+ #toolArea { margin-top:10px; padding:10px; border:1px solid #e0e0e0; background:#fdfdfd; white-space:pre-wrap; word-wrap:break-word; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>LLM Stream & Tool-Use Tester</h1>
+
+  <label>API URL:<input type="text" id="apiUrl" value="http://localhost:8000/api/v1/chat/completions"></label>
+  <label>API Key:<input type="password" id="apiKey" placeholder="Bearer key (optional)"></label>
+  <label>Model Name (required):<input type="text" id="modelName" placeholder="e.g. gpt-4o-mini"></label>
+
+  <label>Functions / Tools (JSON):<textarea id="functionsJson">[
+    {"type":"function","function":{"name":"get_current_time","description":"Return the current UTC time (ISO‑8601)","parameters":{"type":"object","properties":{}, "required":[]}}},   
+    {"type":"function","function":{"name":"get_weather","description":"Return the weather for a city","parameters":{"type":"object","properties":{"location":{"type":"string","description":"The city name"},"unit":{"type":"string","enum":["c","f"],"description":"Temperature unit"}},"required":["location"]}}}
+]
+</textarea></label>
+
+  <label>Prompt:<textarea id="prompt" placeholder="Ask something… e.g., What time is it and what's the weather in London?"></textarea></label>
+  <button id="sendButton">Send Request</button>
+
+  <div class="status" id="status"></div>
+  <h2>Assistant Response</h2><div id="responseArea"></div>
+  <h2>Tool Calls Inspector</h2><div id="toolArea"></div>
+</div>
+
+<script>
+/* ---------- local demo stubs ---------- */
+const localTools = {
+  get_current_time: () => {
+    console.log("Tool: get_current_time called");
+    return {now: new Date().toISOString()};
+;
+  },
+  get_weather: ({location, unit}) => {
+    console.log(`Tool: get_weather called with location=${location}, unit=${unit}`);
+    const temp = unit === 'f' ? 71 : 22;
+    // Simulate varied conditions
+    const conditions = ['sunny', 'cloudy', 'rainy', 'windy'];
+    const randomCondition = conditions[Math.floor(Math.random() * conditions.length)];
+    return {location, unit, temp, conditions: randomCondition};
+  }
+};
+/* -------------------------------------- */
+
+const $ = id => document.getElementById(id);
+const sendButton = $('sendButton'), statusDiv = $('status'),
+      responseArea = $('responseArea'), toolCallsArea = $('toolArea');
+
+sendButton.addEventListener('click', async () => {
+  const apiUrl = $('apiUrl').value.trim();
+  const apiKey = $('apiKey').value.trim();
+  const modelName = $('modelName').value.trim();
+  const userPrompt = $('prompt').value.trim();
+
+  if (!apiUrl || !modelName || !userPrompt) {
+    alert('Please fill in API URL, Model Name, and Prompt.');
+    return;
+  }
+
+  responseArea.textContent = ''; 
+  toolCallsArea.textContent = ''; // Clear tool calls area at the beginning of a new interaction
+  statusDiv.textContent = 'Sending…';
+  sendButton.disabled = true;
+
+  const conversationHistory = [{role: 'user', content: userPrompt}];
+  let toolsDefinition;
+  try {
+    toolsDefinition = JSON.parse($('functionsJson').value || '[]');
+  } catch (e) {
+    alert('Invalid JSON in Functions / Tools definition: ' + e.message);
+    statusDiv.textContent = 'Error: Invalid Tools JSON.';
+    sendButton.disabled = false;
+    return;
+  }
+
+  const initialBodyConfig = {
+    model: modelName,
+    stream: true,
+  };
+  if (toolsDefinition.length > 0) {
+    initialBodyConfig.tools = toolsDefinition;
+    initialBodyConfig.tool_choice = 'auto';
+  }
+
+  try {
+    await chatLoop(initialBodyConfig, conversationHistory, apiUrl, apiKey);
+  } catch (error) {
+    console.error("Chat loop failed:", error);
+    statusDiv.textContent = `Error: ${error.message}`;
+    responseArea.textContent += `\n\n[Error in chat loop: ${error.message}]`;
+  } finally {
+    sendButton.disabled = false;
+    console.log("Final conversation history:", conversationHistory);
+  }
+});
+
+/* ========= streaming driver ========= */
+async function chatLoop(initialBodyConfig, conversationHistory, apiUrl, apiKey, callDepth = 0) { // Add callDepth
+  console.log(`>>> chatLoop called (Depth: ${callDepth}). History length: ${conversationHistory.length}`);
+  console.log(`Current conversation history (Depth: ${callDepth}):`, JSON.parse(JSON.stringify(conversationHistory))); // Deep copy for logging
+
+  let assistantMessageForHistory = {
+    role: 'assistant',
+    content: null, 
+    tool_calls: [] 
+  };
+  
+  let activeToolCallBuilds = []; 
+
+  const headers = {'Content-Type': 'application/json', 'Accept': 'text/event-stream'};
+  if (apiKey) headers.Authorization = 'Bearer ' + apiKey;
+
+  const requestBody = {...initialBodyConfig, messages: conversationHistory};
+  // *** CRITICAL LOG for the SECOND (and subsequent) calls ***
+  console.log(`[Depth: ${callDepth}] Requesting completion with body:`, JSON.stringify(requestBody, null, 2));
+  statusDiv.textContent = `[Depth: ${callDepth}] Requesting completion...`;
+
+  const response = await fetch(apiUrl, {method: 'POST', headers, body: JSON.stringify(requestBody)});
+
+  if (!response.ok) {
+    let errorText = `[Depth: ${callDepth}] HTTP Error: ${response.status} ${response.statusText}`;
+    try {
+        const errorData = await response.json();
+        errorText += `\n${JSON.stringify(errorData, null, 2)}`;
+    } catch (e) { /* ignore */ }
+    console.error(`[Depth: ${callDepth}] Fetch error:`, errorText);
+    statusDiv.textContent = `Error (Depth: ${callDepth}).`;
+    responseArea.textContent += `\n[${errorText}]`;
+    throw new Error(errorText);
+  }
+
+  if (!response.body) {
+    statusDiv.textContent = `[Depth: ${callDepth}] No stream body received.`;
+    throw new Error(`[Depth: ${callDepth}] No stream body received.`);
+  }
+
+  statusDiv.textContent = `[Depth: ${callDepth}] Streaming response…`;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let streamFinishedNaturally = false;
+  let receivedAnyDataInStream = false; // New flag
+
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) {
+        console.log(`[Depth: ${callDepth}] Stream reader marked done (EOF). receivedAnyDataInStream: ${receivedAnyDataInStream}`);
+        streamFinishedNaturally = true; 
+        break;
+      }
+      receivedAnyDataInStream = true; // Mark that we got some data
+
+      buffer += decoder.decode(value, {stream: true});
+      let cutPosition;
+
+      while ((cutPosition = buffer.indexOf('\n\n')) !== -1) {
+        const line = buffer.slice(0, cutPosition).trim();
+        buffer = buffer.slice(cutPosition + 2);
+
+        if (!line.startsWith('data:')) continue;
+
+        const data = line.slice(5).trim();
+        // *** LOG ALL RECEIVED DATA for the current call depth ***
+        console.log(`[Depth: ${callDepth}] Stream Data:`, data);
+
+        if (data === '[DONE]') {
+          console.log(`[Depth: ${callDepth}] Received [DONE] marker.`);
+          streamFinishedNaturally = true;
+          break; 
+        }
+
+        let chunk;
+        try {
+          chunk = JSON.parse(data);
+        } catch (e) {
+          console.warn(`[Depth: ${callDepth}] Received non-JSON data chunk:`, data, e);
+          responseArea.textContent += `\n[Warning: Bad JSON chunk (Depth ${callDepth}): ${data}]`;
+          continue;
+        }
+
+        const choice = chunk.choices?.[0];
+        if (!choice) {
+          console.warn(`[Depth: ${callDepth}] Chunk received without choices[0]:`, JSON.stringify(chunk));
+          continue;
+        }
+
+        const delta = choice.delta || {};
+
+        if (delta.content) {
+          responseArea.textContent += delta.content;
+          assistantMessageForHistory.content = (assistantMessageForHistory.content || "") + delta.content;
+        }
+
+        if (delta.tool_calls) {
+          // ... (tool call accumulation logic - seems to be working for the first pass)
+          // For simplicity in debugging the second pass, we'll assume it's mostly text or a stop
+           for (const toolCallDelta of delta.tool_calls) {
+            const index = toolCallDelta.index;
+            if (!activeToolCallBuilds[index]) {
+              console.log(`[Depth: ${callDepth}] Initializing activeToolCallBuilds[${index}] with toolCallDelta:`, JSON.stringify(toolCallDelta));
+              activeToolCallBuilds[index] = { id: toolCallDelta.id, type: 'function', function: {name: '', arguments: ''}};
+            }
+            if (toolCallDelta.id) activeToolCallBuilds[index].id = toolCallDelta.id;
+            if (toolCallDelta.type) activeToolCallBuilds[index].type = toolCallDelta.type;
+            if (toolCallDelta.function?.name) activeToolCallBuilds[index].function.name += toolCallDelta.function.name;
+            if (toolCallDelta.function?.arguments) activeToolCallBuilds[index].function.arguments += toolCallDelta.function.arguments;
+            
+             console.log(`[Depth: ${callDepth}] After processing delta for index ${index}, activeToolCallBuilds[${index}] is:`, JSON.stringify(activeToolCallBuilds[index]));
+        }
+          renderToolCalls(activeToolCallBuilds.filter(tc => tc));
+        }
+
+        if (choice.finish_reason) {
+          console.log(`[Depth: ${callDepth}] Finish Reason:`, choice.finish_reason, "Active Tools for this pass:", activeToolCallBuilds);
+          statusDiv.textContent = `[Depth: ${callDepth}] Stream finished: ${choice.finish_reason}.`;
+          
+          assistantMessageForHistory.tool_calls = activeToolCallBuilds
+            .filter(tc => tc && tc.id && tc.function && tc.function.name)
+            .map(tcBuild => ({ id: tcBuild.id, type: tcBuild.type, function: { name: tcBuild.function.name, arguments: tcBuild.function.arguments }}));
+
+          if (choice.finish_reason === 'tool_calls') {
+            // This part is for the FIRST pass (LLM wants to call a tool)
+            conversationHistory.push({...assistantMessageForHistory}); 
+            console.log(`[Depth: ${callDepth}] Assistant message with tool_calls added to history:`, JSON.stringify(assistantMessageForHistory, null, 2));
+
+            const toolResultMessages = [];
+            toolCallsArea.textContent += "\n--- Executing Tools ---";
+            for (const toolCall of assistantMessageForHistory.tool_calls) {
+              // ... (tool execution logic - known to work)
+              let args;
+              try { args = toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {}; } catch (e) {
+                console.error(`Error parsing args for ${toolCall.function.name}:`, e);
+                toolResultMessages.push({ role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify({error: `Arg parsing failed: ${e.message}`})});
+                continue;
+              }
+              const toolName = toolCall.function.name;
+              let result;
+              if (localTools[toolName]) {
+                try { result = localTools[toolName](args); if (typeof result !== 'object' || result === null) result = { value: result }; }
+                catch (e) { result = {error: `Tool ${toolName} exec failed: ${e.message}`}; }
+              } else { result = {error: `No local impl for ${toolName}`}; }
+              const toolMessage = { role: 'tool', tool_call_id: toolCall.id, content: JSON.stringify(result) };
+              toolResultMessages.push(toolMessage);
+              toolCallsArea.textContent += `\nTool: ${toolName}, ID: ${toolCall.id}\nArgs: ${JSON.stringify(args)}\nResult: ${toolMessage.content}`;
+            }
+            
+            conversationHistory.push(...toolResultMessages);
+            console.log(`[Depth: ${callDepth}] Tool result messages added to history:`, JSON.stringify(toolResultMessages, null, 2));
+            toolCallsArea.textContent += "\n--- Sending results to LLM ---";
+            statusDiv.textContent = `[Depth: ${callDepth}] Sending tool results to LLM…`;
+            
+            // *** RECURSIVE CALL ***
+            console.log(`>>> [Depth: ${callDepth}] Making RECURSIVE chatLoop call.`);
+            if (callDepth > 3){
+                return
+            }
+            await chatLoop(initialBodyConfig, conversationHistory, apiUrl, apiKey, callDepth + 1); // Pass incremented depth
+            return; 
+          } else { 
+            // This is for the SECOND pass (LLM responds after tool use) OR first pass if no tools
+            if (assistantMessageForHistory.content || choice.finish_reason === 'stop' || (assistantMessageForHistory.tool_calls && assistantMessageForHistory.tool_calls.length > 0 && choice.finish_reason !== 'tool_calls')) {
+                const lastMessage = conversationHistory[conversationHistory.length -1];
+                if (!(lastMessage && lastMessage.role === 'assistant' && lastMessage.content === assistantMessageForHistory.content && (!lastMessage.tool_calls || lastMessage.tool_calls.length ===0))) {
+                    conversationHistory.push({...assistantMessageForHistory});
+                    console.log(`[Depth: ${callDepth}] Assistant message (final text or non-tool_calls finish) added to history:`, JSON.stringify(assistantMessageForHistory, null, 2));
+                } else {
+                    console.log(`[Depth: ${callDepth}] Assistant message (final text) was a duplicate, not adding to history.`);
+                }
+            }
+            streamFinishedNaturally = true; 
+            break; 
+          }
+        } 
+      } 
+
+      if (streamFinishedNaturally) {
+        break; 
+      }
+    } 
+  } catch (error) {
+    console.error(`[Depth: ${callDepth}] Error during stream processing:`, error);
+    statusDiv.textContent = `[Depth: ${callDepth}] Stream error: ${error.message}`;
+    // responseArea.textContent += `\n[Stream Error (Depth ${callDepth}): ${error.message}]`; // Already logged by fetch error
+    throw error; 
+  } finally {
+    if (reader) reader.releaseLock();
+    console.log(`[Depth: ${callDepth}] Stream processing ended. receivedAnyDataInStream: ${receivedAnyDataInStream}`);
+    
+    // If stream ended by EOF or [DONE] without a finish_reason that led to history push:
+    if (streamFinishedNaturally && 
+        (assistantMessageForHistory.content || (assistantMessageForHistory.tool_calls && assistantMessageForHistory.tool_calls.length > 0)) && // if there's something to save
+        (conversationHistory.length === 0 || // if history is empty
+         conversationHistory[conversationHistory.length -1].role !== 'assistant' || // or last msg isn't assistant
+         conversationHistory[conversationHistory.length -1].content !== assistantMessageForHistory.content || // or content differs
+         JSON.stringify(conversationHistory[conversationHistory.length -1].tool_calls) !== JSON.stringify(assistantMessageForHistory.tool_calls) // or tool_calls differ
+        )
+       ) {
+        // This condition is to ensure we capture the assistant's message if the stream
+        // just ends (e.g. [DONE]) without a specific 'finish_reason' having already added it.
+        // Check if it's a truly new message or just a repeat of what might have been added by finish_reason:stop
+        const lastMessage = conversationHistory[conversationHistory.length - 1];
+        const isDifferentFromLast = !lastMessage ||
+                                  lastMessage.role !== 'assistant' ||
+                                  lastMessage.content !== assistantMessageForHistory.content ||
+                                  JSON.stringify(lastMessage.tool_calls || []) !== JSON.stringify(assistantMessageForHistory.tool_calls || []);
+
+        if (isDifferentFromLast && (assistantMessageForHistory.content || (assistantMessageForHistory.tool_calls && assistantMessageForHistory.tool_calls.length > 0))) {
+            conversationHistory.push({...assistantMessageForHistory});
+            console.log(`[Depth: ${callDepth}] Assistant message (after stream EOF/DONE, if not already added) pushed to history:`, JSON.stringify(assistantMessageForHistory, null, 2));
+        } else if (!isDifferentFromLast) {
+            console.log(`[Depth: ${callDepth}] Assistant message (after stream EOF/DONE) was same as last, not re-adding.`);
+        }
+    } else if (streamFinishedNaturally) {
+        console.log(`[Depth: ${callDepth}] Stream ended naturally, but no new assistant content/tool_calls to add to history from this pass.`);
+    }
+
+    if (callDepth === 0 && !streamFinishedNaturally && !receivedAnyDataInStream) {
+        console.warn(`[Depth: ${callDepth}] Initial call stream ended without receiving any data after connection.`);
+        statusDiv.textContent = `[Depth: ${callDepth}] Stream ended without data. Check server logs.`;
+    } else if (callDepth > 0 && !streamFinishedNaturally && !receivedAnyDataInStream) {
+        console.warn(`[Depth: ${callDepth}] Recursive call stream ended without receiving any data after connection. This is likely where the process stops.`);
+        statusDiv.textContent = `[Depth: ${callDepth}] LLM did not respond after tool use. Check server/translator logs.`;
+        // Potentially add the partial assistant message if it had some content before stopping
+        if (assistantMessageForHistory.content || (assistantMessageForHistory.tool_calls && assistantMessageForHistory.tool_calls.length > 0)) {
+             // Similar logic as above to prevent duplicates
+            const lastMessage = conversationHistory[conversationHistory.length - 1];
+            const isDifferentFromLast = !lastMessage ||
+                                      lastMessage.role !== 'assistant' ||
+                                      lastMessage.content !== assistantMessageForHistory.content ||
+                                      JSON.stringify(lastMessage.tool_calls || []) !== JSON.stringify(assistantMessageForHistory.tool_calls || []);
+            if (isDifferentFromLast) {
+                conversationHistory.push({...assistantMessageForHistory});
+                 console.log(`[Depth: ${callDepth}] Pushing potentially incomplete assistant message to history due to abrupt stream end:`, JSON.stringify(assistantMessageForHistory, null, 2));
+            }
+        }
+    }
+
+
+  }
+}
+
+// Initial call in event listener:
+// await chatLoop(initialBodyConfig, conversationHistory, apiUrl, apiKey); // Depth defaults to 0
+function renderToolCalls(toolCallBuilds) {
+  // Renders the current state of tool calls being built
+  toolCallsArea.innerHTML = toolCallBuilds
+    .map((tc, idx) => {
+      if (!tc) return `<em>[Index ${idx}: Waiting for data...]</em>`;
+      const id = tc.id || '<em>pending_id</em>';
+      const name = tc.function?.name || '<em>pending_name</em>';
+      const args = tc.function?.arguments || '<em>pending_args</em>';
+      return `<strong>Tool Call (Index ${idx})</strong>\nID: ${id}\nName: ${name}\nArgs: ${args}`;
+    })
+    .join('\n---\n');
+}
+</script>
+</body>
+</html>
