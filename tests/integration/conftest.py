@@ -33,10 +33,19 @@ async def http_client():
     """Create an HTTP client for testing"""
     app_config.validate()
     
+    # Configure SSL verification
+    if app_config.SSL_CERT_PATH:
+        # Use custom certificate if provided
+        verify = app_config.SSL_CERT_PATH
+    else:
+        # Use boolean flag for SSL verification
+        verify = app_config.VERIFY_SSL
+    
     client = httpx.AsyncClient(
         base_url=app_config.BASE_URL,
         timeout=app_config.TIMEOUT,
-        headers={"User-Agent": "GSAi-API-Test-Framework/1.0"}
+        headers={"User-Agent": "GSAi-API-Test-Framework/1.0"},
+        verify=verify
     )
     
     yield client

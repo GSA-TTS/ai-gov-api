@@ -84,6 +84,10 @@ class TestConfig:
     ENABLE_RESPONSE_LOGGING: bool = os.getenv('ENABLE_RESPONSE_LOGGING', 'false').lower() == 'true'
     METRICS_ENABLED: bool = os.getenv('METRICS_ENABLED', 'true').lower() == 'true'
     
+    # ===== SSL/TLS CONFIGURATION =====
+    VERIFY_SSL: bool = os.getenv('VERIFY_SSL', 'true').lower() == 'true'
+    SSL_CERT_PATH: Optional[str] = os.getenv('SSL_CERT_PATH', None)
+    
     def __post_init__(self):
         """Initialize derived attributes"""
         if self.CHAT_MODELS is None:

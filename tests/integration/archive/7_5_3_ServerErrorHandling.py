@@ -7,6 +7,7 @@ import httpx
 import asyncio
 from typing import Dict, Any
 from .config import config
+from ..utils.ssl_config import create_httpx_client, create_async_httpx_client
 
 
 @pytest.fixture
@@ -18,7 +19,7 @@ def auth_headers() -> Dict[str, str]:
 @pytest.fixture
 def http_client():
     """Create an HTTP client for making requests."""
-    with httpx.Client(timeout=config.TIMEOUT) as client:
+    with create_httpx_client(timeout=config.TIMEOUT) as client:
         yield client
 
 
@@ -87,7 +88,7 @@ class TestServerErrorHandling:
             )
         
         async def run_concurrent_test():
-            async with httpx.AsyncClient(timeout=config.TIMEOUT) as client:
+            async with create_async_httpx_client(timeout=config.TIMEOUT) as client:
                 # Make 10 concurrent requests
                 tasks = [make_request(client, i) for i in range(10)]
                 responses = await asyncio.gather(*tasks, return_exceptions=True)
@@ -127,7 +128,7 @@ class TestServerErrorHandling:
         }
         
         # Use a longer timeout for this specific test
-        with httpx.Client(timeout=60.0) as long_timeout_client:
+        with create_httpx_client(timeout=60.0) as long_timeout_client:
             response = long_timeout_client.post(
                 f"{config.BASE_URL}/chat/completions",
                 json=payload,
